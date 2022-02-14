@@ -6,8 +6,8 @@ See also the documented [isolation issue](#isolation-issue)
 
 ## Data Model
 
-```json
-export default  {
+```js
+export default {
     typeid: "hex:dice-1.0.0",
     inherits: "NamedProperty",
     properties: [
