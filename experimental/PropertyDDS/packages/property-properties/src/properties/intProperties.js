@@ -126,7 +126,7 @@ export class Integer64Property extends ValueProperty {
 
         var changed = oldHighValue !== newHighValue || oldLowValue !== newLowValue;
 
-        if (changed) {
+        if (changed  || this.shouldApplyUnchanged()) {
             this._data = in_value.clone();
             this._setDirty(in_reportToView);
         }

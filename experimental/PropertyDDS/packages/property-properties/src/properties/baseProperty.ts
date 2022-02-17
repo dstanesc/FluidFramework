@@ -110,6 +110,7 @@ export abstract class BaseProperty {
     protected _context: string;
     protected _parent: BaseProperty | undefined;
     protected _noDirtyInBase: boolean;
+    protected _isApplyUnchanged: boolean = false;
 
     _tree: any;
     _checkoutView: any;
@@ -1315,6 +1316,38 @@ export abstract class BaseProperty {
     get _properties() {
         return this._flatten();
     }
+
+    /**
+     * This method sets the flag 'isApplyUnchanged' to value given by the parameter. If set to true,
+     * the call to the applyChangeset will apply the change even if the value is not changed.
+     * @param in_isApplyUnchanged - The value
+     *
+     */
+    public setApplyUnchanged(in_isApplyUnchanged: boolean): void{
+        this._isApplyUnchanged = in_isApplyUnchanged;
+
+    }
+
+    /**
+     * This method returns true if the call to the applyChangeset should apply the change even
+     * if the value is not chnaged.
+     * @returns whether  the call to the applyChangeset should apply the change even
+     * if the value is not changed.
+     */
+    public shouldApplyUnchanged(): boolean {
+        if(this._isApplyUnchanged) {return true;}
+        else {
+            const parent = this.getParent();
+            if(parent !== undefined){
+                return parent.shouldApplyUnchanged();
+            }
+            else{
+                return false;
+            }
+        }
+    }
+
+
 
 }
 

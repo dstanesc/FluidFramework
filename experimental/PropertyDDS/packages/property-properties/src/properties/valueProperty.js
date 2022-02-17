@@ -92,7 +92,7 @@ export class ValueProperty extends BaseProperty {
         var oldValue = this._data;
         var castedValue = this._castFunctor(in_value);
         var changed = castedValue !== oldValue;
-        if (changed) {
+        if (changed || this.shouldApplyUnchanged()) {
             this._data = castedValue;
             this._setDirty(in_reportToView);
         }
