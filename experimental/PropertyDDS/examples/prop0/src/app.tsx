@@ -15,6 +15,11 @@ import { Dice } from "./dice";
 
 import { DiceBinding } from "./diceBinding";
 
+import { SharedPropertyTree } from "@fluid-experimental/property-dds";
+
+//import { copy as cloneDeep } from "fastest-json-copy";
+
+import _ from "lodash";
 
 // In interacting with the service, we need to be explicit about whether we're creating a new document vs. loading
 // an existing one.  We also need to provide the unique ID for the document we are creating or loading from.
@@ -27,6 +32,7 @@ import { DiceBinding } from "./diceBinding";
 // Reference to dice div element
 
 const diceDiv = document.getElementById("content") as HTMLDivElement;
+const dirtyDiv = document.getElementById("dirty") as HTMLDivElement;
 const commitDiv = document.getElementById("commit") as HTMLDivElement;
 
 async function start(): Promise<void> {
@@ -70,7 +76,7 @@ async function start(): Promise<void> {
 
         rootProp.insert("dice", PropertyFactory.create("hex:dice-1.0.0", undefined, { "diceValue": "0" }));
 
-        // Commit in order to reflect changes on the other clients
+        // Com-mit in order to reflect changes on the other clients
         propertyTree.commit();
     }
 
@@ -99,17 +105,27 @@ function configureBinding(fluidBinder: DataBinder, workspace: IPropertyTree) {
 
     // Configure function to update the SharedPropertyTree
 
-    diceDiv.onclick = function (ev) {
+    diceDiv.onclick = function(ev) {
         const diceValueProperty: Int32Property = workspace.rootProperty.resolvePath("dice.diceValue")! as Int32Property;
         const newLocal = Math.floor(Math.random() * 1024) + 1;
-        diceValueProperty.setValue(newLocal);
+        diceValueProperty.setValue(newLocal);//
         diceDiv.innerHTML = newLocal.toString();
         // workspace.commit();
     };
 
-    commitDiv.onclick = function (ev) {
+    commitDiv.onclick = function(ev) {
         workspace.commit();
     };
+
+    workspace.on("changeSetModified", (cs) => {
+        console.log("changeSetModified `${cs}`");
+        const tree: SharedPropertyTree = workspace.tree;
+        if (!_.isEqual(tree.remoteTipView, tree.tipView)){
+            dirtyDiv.innerHTML = "(Remote Changes Avail)";
+        } else {
+            dirtyDiv.innerHTML = "";
+        }
+    });
 }
 
 
