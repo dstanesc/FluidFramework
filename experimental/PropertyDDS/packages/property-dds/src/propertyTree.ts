@@ -592,7 +592,14 @@ export class SharedPropertyTree extends SharedObject {
 			// Checkout the new tip
 			this._root.applyChangeSet(changesToTip);
 			this._root.cleanDirty(BaseProperty.MODIFIED_STATE_FLAGS.PENDING_CHANGE);
-			this._root.applyChangeSet(pendingChanges);
+            try{
+                this._root.setApplyUnchanged(true);
+                this._root.applyChangeSet(pendingChanges);
+            }
+            finally{
+                this._root.setApplyUnchanged(false);
+            }
+
 			this.popNotificationDelayScope();
 		}
 

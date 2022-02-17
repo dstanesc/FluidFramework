@@ -362,7 +362,7 @@ export class StringProperty extends ValueArrayProperty {
         var oldValue = this._dataArrayRef;
         var castedValue = String(in_value);
         var changed = castedValue !== oldValue;
-        if (changed) {
+        if (changed || this.shouldApplyUnchanged()) {
 
             var stringLength = this._dataArrayRef.length;
             if (stringLength > 0) {
