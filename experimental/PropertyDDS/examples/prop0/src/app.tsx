@@ -17,9 +17,11 @@ import { DiceBinding } from "./diceBinding";
 
 import { SharedPropertyTree } from "@fluid-experimental/property-dds";
 
-//import { copy as cloneDeep } from "fastest-json-copy";
+// import { copy as cloneDeep } from "fastest-json-copy";
 
 import _ from "lodash";
+
+// import { ChangeSet } from "@fluid-experimental/property-changeset";
 
 // In interacting with the service, we need to be explicit about whether we're creating a new document vs. loading
 // an existing one.  We also need to provide the unique ID for the document we are creating or loading from.
@@ -32,7 +34,7 @@ import _ from "lodash";
 // Reference to dice div element
 
 const diceDiv = document.getElementById("content") as HTMLDivElement;
-const dirtyDiv = document.getElementById("dirty") as HTMLDivElement;
+const dirtyDiv = document.getElementById("dirty") as HTMLSpanElement;
 const commitDiv = document.getElementById("commit") as HTMLDivElement;
 
 async function start(): Promise<void> {
@@ -117,14 +119,32 @@ function configureBinding(fluidBinder: DataBinder, workspace: IPropertyTree) {
         workspace.commit();
     };
 
+    dirtyDiv.onclick = function(ev) {
+        if (dirtyDiv.innerHTML !== "") {
+            const tree: SharedPropertyTree = workspace.tree;
+            const diff = _.differenceWith([tree.remoteTipView], [tree.tipView]);
+            const remoteValue = diff[0].insert["hex:dice-1.0.0"].dice.Int32.diceValue;
+            // eslint-disable-next-line max-len
+            const diceValueProperty: Int32Property = workspace.rootProperty.resolvePath("dice.diceValue")! as Int32Property;
+            diceValueProperty.setValue(remoteValue);
+            diceDiv.innerHTML = remoteValue.toString();
+        }
+    };
+
     workspace.on("changeSetModified", (cs) => {
-        console.log("changeSetModified `${cs}`");
         const tree: SharedPropertyTree = workspace.tree;
-        if (!_.isEqual(tree.remoteTipView, tree.tipView)){
-            dirtyDiv.innerHTML = "(Remote Changes Avail)";
+        if (!_.isEqual(tree.remoteTipView, tree.tipView)) {
+            const diff = _.differenceWith([tree.remoteTipView], [tree.tipView]);
+            const remoteValue = diff[0].insert["hex:dice-1.0.0"].dice.Int32.diceValue.toString();
+            dirtyDiv.innerHTML = `*(${remoteValue})`;
+
         } else {
             dirtyDiv.innerHTML = "";
         }
+    });
+
+    workspace.on("commit", (cs) => {
+        dirtyDiv.innerHTML = "";
     });
 }
 
@@ -132,6 +152,3 @@ function configureBinding(fluidBinder: DataBinder, workspace: IPropertyTree) {
 // Start the application
 
 start().catch((error) => console.error(error));
-
-
-
