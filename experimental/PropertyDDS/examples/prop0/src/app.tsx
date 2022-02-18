@@ -15,11 +15,13 @@ import { Dice } from "./dice";
 
 import { DiceBinding } from "./diceBinding";
 
-import { SharedPropertyTree } from "@fluid-experimental/property-dds";
+import { SerializedChangeSet, SharedPropertyTree } from "@fluid-experimental/property-dds";
 
-// import { copy as cloneDeep } from "fastest-json-copy";
+// import { copy as deepClone } from "fastest-json-copy";
 
 import _ from "lodash";
+
+// import { ChangeSet } from "@fluid-experimental/property-changeset";
 
 // import { ChangeSet } from "@fluid-experimental/property-changeset";
 
@@ -122,8 +124,10 @@ function configureBinding(fluidBinder: DataBinder, workspace: IPropertyTree) {
     dirtyDiv.onclick = function(ev) {
         if (dirtyDiv.innerHTML !== "") {
             const tree: SharedPropertyTree = workspace.tree;
-            const diff = _.differenceWith([tree.remoteTipView], [tree.tipView]);
-            const remoteValue = diff[0].insert["hex:dice-1.0.0"].dice.Int32.diceValue;
+            //const diff = _.differenceWith([tree.remoteTipView], [tree.tipView]);
+            //const remoteValue = diff[0].insert["hex:dice-1.0.0"].dice.Int32.diceValue;
+            const remoteTip: SerializedChangeSet = tree.remoteTipView;
+            const remoteValue = remoteTip.insert["hex:dice-1.0.0"].dice.Int32.diceValue.toString();
             // eslint-disable-next-line max-len
             const diceValueProperty: Int32Property = workspace.rootProperty.resolvePath("dice.diceValue")! as Int32Property;
             diceValueProperty.setValue(remoteValue);
@@ -134,10 +138,12 @@ function configureBinding(fluidBinder: DataBinder, workspace: IPropertyTree) {
     workspace.on("changeSetModified", (cs) => {
         const tree: SharedPropertyTree = workspace.tree;
         if (!_.isEqual(tree.remoteTipView, tree.tipView)) {
-            const diff = _.differenceWith([tree.remoteTipView], [tree.tipView]);
-            const remoteValue = diff[0].insert["hex:dice-1.0.0"].dice.Int32.diceValue.toString();
+            //const diff = _.differenceWith([tree.remoteTipView], [tree.tipView]);
+            //const remoteValue = diff[0].insert["hex:dice-1.0.0"].dice.Int32.diceValue.toString();
+            const remoteTip: SerializedChangeSet = tree.remoteTipView;
+            const remoteValue = remoteTip.insert["hex:dice-1.0.0"].dice.Int32.diceValue.toString();
             dirtyDiv.innerHTML = `*(${remoteValue})`;
-
+            console.log(JSON.stringify(remoteTip, null, 2));
         } else {
             dirtyDiv.innerHTML = "";
         }
