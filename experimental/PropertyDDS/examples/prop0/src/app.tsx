@@ -15,6 +15,7 @@ import { Dice } from "./dice";
 
 import { DiceBinding } from "./diceBinding";
 
+import { IContainer } from '@fluidframework/container-definitions';
 
 // In interacting with the service, we need to be explicit about whether we're creating a new document vs. loading
 // an existing one.  We also need to provide the unique ID for the document we are creating or loading from.
@@ -35,6 +36,8 @@ async function start(): Promise<void> {
     const documentId = !shouldCreateNew ? window.location.hash.substring(1) : "";
     // eslint-disable-next-line max-len
     const [container, containerId] = await getTinyliciousContainer(documentId, PropertyTreeContainerRuntimeFactory, shouldCreateNew);
+
+    await waitConnected(container);
 
     // update the browser URL and the window title with the actual container ID
     location.hash = containerId;
@@ -99,22 +102,35 @@ function configureBinding(fluidBinder: DataBinder, workspace: IPropertyTree) {
 
     // Configure function to update the SharedPropertyTree
 
-    diceDiv.onclick = function (ev) {
-        const diceValueProperty: Int32Property = workspace.rootProperty.resolvePath("dice.diceValue")! as Int32Property;
-        const newLocal = Math.floor(Math.random() * 1024) + 1;
-        diceValueProperty.setValue(newLocal);
-        diceDiv.innerHTML = newLocal.toString();
-        // workspace.commit();
+    diceDiv.onclick = function(ev) {
+        roll(workspace, 1000);
     };
 
-    commitDiv.onclick = function (ev) {
+    commitDiv.onclick = function(ev) {
         workspace.commit();
     };
 }
 
+function roll(workspace: IPropertyTree, cycles: number) {
+    const diceValueProperty: Int32Property = workspace.rootProperty.resolvePath("dice.diceValue")! as Int32Property;
+    const newLocal = Math.floor(Math.random() * 1024) + 1;
+    console.log(`${newLocal}`);
+    diceValueProperty.setValue(newLocal);
+    diceDiv.innerHTML = newLocal.toString();
+    workspace.commit();
+    if (cycles > 0) {
+        setTimeout(() => roll(workspace, --cycles), 5);
+    }
+}
+
+
+function waitConnected(container: IContainer) {
+    return new Promise((resolve) =>
+        container.on("connected", () => resolve(undefined))
+    );
+}
 
 // Start the application
-
 start().catch((error) => console.error(error));
 
 
