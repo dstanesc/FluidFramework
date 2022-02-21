@@ -126,7 +126,7 @@ function roll(workspace: IPropertyTree, cycles: number) {
 
 function waitConnected(container: IContainer) {
     return new Promise((resolve) =>
-        container.on("connected", () => resolve(undefined))
+        container.once("connected", () => resolve(undefined))
     );
 }
 
