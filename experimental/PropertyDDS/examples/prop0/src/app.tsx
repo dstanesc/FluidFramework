@@ -1,3 +1,4 @@
+
 import { PropertyFactory, NodeProperty, Int32Property }
     from "@fluid-experimental/property-properties";
 
@@ -17,9 +18,9 @@ import { DiceBinding } from "./diceBinding";
 
 import { SerializedChangeSet, SharedPropertyTree } from "@fluid-experimental/property-dds";
 
-// import { copy as deepClone } from "fastest-json-copy";
+import { copy as deepClone } from "fastest-json-copy";
 
-import _ from "lodash";
+import _ from 'lodash';
 
 // import { ChangeSet } from "@fluid-experimental/property-changeset";
 
@@ -36,7 +37,8 @@ import _ from "lodash";
 // Reference to dice div element
 
 const diceDiv = document.getElementById("content") as HTMLDivElement;
-const dirtyDiv = document.getElementById("dirty") as HTMLSpanElement;
+const dirtyDiv = document.getElementById("dirty") as HTMLDivElement;
+const changesDiv = document.getElementById("changes") as HTMLDivElement;
 const commitDiv = document.getElementById("commit") as HTMLDivElement;
 
 async function start(): Promise<void> {
@@ -144,6 +146,21 @@ function configureBinding(fluidBinder: DataBinder, workspace: IPropertyTree) {
             const remoteValue = remoteTip.insert["hex:dice-1.0.0"].dice.Int32.diceValue.toString();
             dirtyDiv.innerHTML = `*(${remoteValue})`;
             console.log(JSON.stringify(remoteTip, null, 2));
+            let changes: string = "";
+            const count = tree.remoteChanges.length;
+                for (let i = count - 1; i >= 0; i--) {
+                    const changeSet = tree.remoteChanges[i].changeSet;
+                    const cs = deepClone(changeSet);
+                    const diceValue = cs.modify["hex:dice-1.0.0"].dice.Int32.diceValue;
+                    const oldValue = diceValue.oldValue;
+                    const currentValue = diceValue.value;
+                    changes += i + " [old="+ oldValue + ", new=" +currentValue+"]<br/>";
+                    console.log(`Remote Changes ${i}`);
+                    console.log(JSON.stringify(cs, null, 2));
+                }
+
+                changesDiv.innerHTML = `${changes}`;
+
         } else {
             dirtyDiv.innerHTML = "";
         }
