@@ -16,7 +16,9 @@ import { Dice } from "./dice";
 
 import { DiceBinding } from "./diceBinding";
 
-import { SerializedChangeSet, SharedPropertyTree } from "@fluid-experimental/property-dds";
+import { IContainer } from '@fluidframework/container-definitions';
+
+import { SerializedChangeSet, SharedPropertyTree, IPropertyTreeMessage } from "@fluid-experimental/property-dds";
 
 import { copy as deepClone } from "fastest-json-copy";
 
@@ -39,6 +41,10 @@ import _ from 'lodash';
 const diceDiv = document.getElementById("content") as HTMLDivElement;
 const dirtyDiv = document.getElementById("dirty") as HTMLDivElement;
 const changesDiv = document.getElementById("changes") as HTMLDivElement;
+const localDiv = document.getElementById("local") as HTMLDivElement;
+const remoteTipDiv = document.getElementById("remoteTip") as HTMLDivElement;
+const localTipDiv = document.getElementById("localTip") as HTMLDivElement;
+const pendingDiv = document.getElementById("pending") as HTMLDivElement;
 const commitDiv = document.getElementById("commit") as HTMLDivElement;
 
 async function start(): Promise<void> {
@@ -47,6 +53,8 @@ async function start(): Promise<void> {
     const documentId = !shouldCreateNew ? window.location.hash.substring(1) : "";
     // eslint-disable-next-line max-len
     const [container, containerId] = await getTinyliciousContainer(documentId, PropertyTreeContainerRuntimeFactory, shouldCreateNew);
+
+    await waitConnected(container);
 
     // update the browser URL and the window title with the actual container ID
     location.hash = containerId;
@@ -116,11 +124,16 @@ function configureBinding(fluidBinder: DataBinder, workspace: IPropertyTree) {
         const newLocal = Math.floor(Math.random() * 1024) + 1;
         diceValueProperty.setValue(newLocal);//
         diceDiv.innerHTML = newLocal.toString();
-        // workspace.commit();
+        showStats(workspace.tree);
     };
 
     commitDiv.onclick = function(ev) {
         workspace.commit();
+        showStats(workspace.tree);
+    };
+
+    changesDiv.onclick = function(ev) {
+        roll(workspace, 1000);
     };
 
     dirtyDiv.onclick = function(ev) {
@@ -146,24 +159,10 @@ function configureBinding(fluidBinder: DataBinder, workspace: IPropertyTree) {
             const remoteValue = remoteTip.insert["hex:dice-1.0.0"].dice.Int32.diceValue.toString();
             dirtyDiv.innerHTML = `*(${remoteValue})`;
             console.log(JSON.stringify(remoteTip, null, 2));
-            let changes: string = "";
-            const count = tree.remoteChanges.length;
-                for (let i = count - 1; i >= 0; i--) {
-                    const changeSet = tree.remoteChanges[i].changeSet;
-                    const cs = deepClone(changeSet);
-                    const diceValue = cs.modify["hex:dice-1.0.0"].dice.Int32.diceValue;
-                    const oldValue = diceValue.oldValue;
-                    const currentValue = diceValue.value;
-                    changes += i + " [old="+ oldValue + ", new=" +currentValue+"]<br/>";
-                    console.log(`Remote Changes ${i}`);
-                    console.log(JSON.stringify(cs, null, 2));
-                }
-
-                changesDiv.innerHTML = `${changes}`;
-
         } else {
             dirtyDiv.innerHTML = "";
         }
+        showStats(tree);
     });
 
     workspace.on("commit", (cs) => {
@@ -171,7 +170,60 @@ function configureBinding(fluidBinder: DataBinder, workspace: IPropertyTree) {
     });
 }
 
+function showStats(tree: SharedPropertyTree) {
+    showPending(tree, pendingDiv);
+    showTip(tree.remoteTipView, remoteTipDiv);
+    showTip(tree.tipView, localTipDiv);
+    showChanges(tree.localChanges, localDiv);
+    showChanges(tree.remoteChanges, changesDiv);
+}
 
+function showPending(tree: SharedPropertyTree, div: HTMLDivElement) {
+    const pending = tree.root.serialize({ "dirtyOnly": true });
+    div.innerHTML = "<pre>" + JSON.stringify(pending, null, 2) + "</pre>";
+}
+
+function showTip(tip: SerializedChangeSet, div: HTMLDivElement) {
+    div.innerHTML = "<pre>" + JSON.stringify(tip, null, 2) + "</pre>";
+}
+
+function showChanges(someChanges: IPropertyTreeMessage[], div: HTMLDivElement) {
+    let changes: string = "";
+    const count = someChanges.length;
+    for (let i = count - 1; i >= 0; i--) {
+        const changeSet = someChanges[i].changeSet;
+        const cs = deepClone(changeSet);
+        if (cs.modify) {
+            const diceValue = cs.modify["hex:dice-1.0.0"].dice.Int32.diceValue;
+            const oldValue = diceValue.oldValue;
+            const currentValue = diceValue.value;
+            changes += i + " [old=" + oldValue + ", new=" + currentValue + "]<br/>";
+            console.log(`Remote Changes ${i}`);
+            console.log(JSON.stringify(cs, null, 2));
+        }
+    }
+
+    div.innerHTML = `${changes}`;
+}
+
+function roll(workspace: IPropertyTree, cycles: number) {
+    const diceValueProperty: Int32Property = workspace.rootProperty.resolvePath("dice.diceValue")! as Int32Property;
+    const newLocal = Math.floor(Math.random() * 1024) + 1;
+    console.log(`${newLocal}`);
+    diceValueProperty.setValue(newLocal);
+    diceDiv.innerHTML = newLocal.toString();
+    workspace.commit();
+    if (cycles > 0) {
+        setTimeout(() => roll(workspace, --cycles), 5);
+    }
+}
+
+
+function waitConnected(container: IContainer) {
+    return new Promise((resolve) =>
+        container.once("connected", () => resolve(undefined))
+    );
+}
 // Start the application
 
 start().catch((error) => console.error(error));

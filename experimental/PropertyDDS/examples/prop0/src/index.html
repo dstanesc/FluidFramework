@@ -13,7 +13,9 @@
     <style>
         .dice {min-height: 25%; font-size: 100px; color: red; text-align: center; cursor: pointer; }
         .dirty {min-height: 25%; font-size: 50px; color: blue; text-align: center; cursor: pointer; }
-        .changes {min-height: 25%; font-size: 50px; color: blue; text-align: center; cursor: pointer; }
+        .changes {min-height: 15%; font-size: 18px; color: blue; text-align: center; cursor: pointer; }
+        .local {min-height: 10%; font-size: 18px; color: green; text-align: center; cursor: pointer; }
+        .pending {min-height: 10%; font-size: 18px; color: red; text-align: center; cursor: pointer; }
         .commit {min-height: 25%; font-size: 100px; color: greenyellow; text-align: center; cursor: pointer; }
     </style>
     <body style="margin: 0; height: 100%; background-color: black;">
@@ -21,6 +23,10 @@
         <div id="content" class="dice">RollMe!</div>
         <div id="dirty" class="dirty"></div>
         <div id="commit" class="commit">Commit</div>
+        <div id="remoteTip" class="changes"></div>
+        <div id="localTip" class="local"></div>
+        <div id="pending" class="pending"></div>
         <div id="changes" class="changes"></div>
+        <div id="local" class="local"></div>
     </body>
 </html>
