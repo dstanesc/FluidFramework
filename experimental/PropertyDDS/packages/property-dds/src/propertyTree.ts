@@ -407,8 +407,8 @@ export class SharedPropertyTree extends SharedObject {
 			const serializedSummary = packr.pack(summary);
 
 			for (let pos = 0, i = 0; pos < serializedSummary.length; pos += chunkSize, i++) {
-				builder.addBlob(`summaryChunk_${i}`,
-								bufferToString(serializedSummary.slice(pos, pos + chunkSize), "base64"));
+				const summaryBlob = serializedSummary.slice(pos, pos + chunkSize);
+				builder.addBlob(`summaryChunk_${i}`, summaryBlob);
 				snapshot.numChunks++;
 			}
 		}
@@ -432,8 +432,8 @@ export class SharedPropertyTree extends SharedObject {
 				// We load all chunks
 				const chunks: ArrayBufferLike[] = await Promise.all(
 					range(snapshot.numChunks).map(async (i) => {
-						const buffer = bufferToString(await storage.readBlob(`summaryChunk_${i}`), "utf8");
-						return stringToBuffer(buffer, "base64");
+					const buffer = await storage.readBlob(`summaryChunk_${i}`);
+					return buffer;
 					}),
 				);
 
