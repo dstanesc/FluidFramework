@@ -94,6 +94,8 @@ export class SummaryTreeUploadManager implements ISummaryUploadManager {
             this.blobsShaCache.set(hash, "");
             const blob = await this.manager.createBlob(parsedContent, encoding);
             assert(hash === blob.sha, 0x0b6 /* "Blob.sha and hash do not match!!" */);
+        } else {
+            console.log(`Cache hit: reuse snapshot ${hash}`);
         }
         return hash;
     }
