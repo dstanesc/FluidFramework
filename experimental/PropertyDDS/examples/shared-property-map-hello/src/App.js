@@ -22,6 +22,11 @@ function App() {
             if (mapId === undefined) {
                 window.location.hash = sharedMap.mapId();
             }
+
+            sharedMap.forEach((value, key) => {
+                updateLocalModel(key, value)
+            });
+
             setSharedPropertyMap(sharedMap);
         }
         init();
@@ -35,7 +40,7 @@ function App() {
         console.log(`Deleting local model ${key}`);
     };
 
-    const addMaterials = count  => {
+    const addMaterials = count => {
         for (let i = 0; i < count; i++) {
             addMaterial()
         }
@@ -60,7 +65,7 @@ function App() {
                 ADD 1
             </div>
             <div className="commit" >
-                {(computeSize() / (1024 * 1024)).toFixed(2)} MiB
+                {materials.size} Mat, {(computeSize() / (1024 * 1024)).toFixed(2)} MiB
             </div>
         </div>
     );
