@@ -20,13 +20,23 @@
 }
 
 .mcell {
-    min-width: 50px;
+    min-width: 40px;
     font-size: 20px;
     font-weight: bold;
     color: darkslateblue;
     text-align: right;
     border: 5px solid;
   }
+
+  .mpluscell {
+    min-width: 40px;
+    font-size: 20px;
+    font-weight: bolder;
+    color: black;
+    text-align: center;
+    border: 5px solid;
+  }
+
 
 .commit {
     min-height: 50%;

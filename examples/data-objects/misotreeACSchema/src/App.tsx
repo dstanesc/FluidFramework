@@ -8,8 +8,6 @@
 /* eslint-disable import/no-unassigned-import */
 /* eslint-disable @typescript-eslint/no-floating-promises */
 
-/* eslint-disable curly */
-
 import {
     brand,
     FieldChangeMap,
@@ -144,6 +142,35 @@ function getColor(value: number): string {
     }
 }
 
+function initSchema(workspace) {
+    const tree = workspace.tree as SharedTree;
+    const rootAnchor = tree.rootAnchor();
+    const colsNr = readColsNumber(workspace);
+    const cells: any[] = [];
+    for (let i = 0; i < colsNr; i++) {
+        cells.push({
+            type: oneCellSchema.name,
+            value: 0,
+        });
+    }
+    tree.runTransaction((forest, editor) => {
+        tree.context.prepareForEdit();
+        const field = editor.sequenceField(
+            tree.locate(rootAnchor!),
+            rowKey,
+        );
+        const writeCursor = singleTextCursor({
+            type: oneRowSchema.name,
+            fields: {
+                [cellKey]: cells,
+            },
+        });
+        const nrRows = readRowsNumber(workspace);
+        field.insert(nrRows, writeCursor);
+        return TransactionResult.Apply;
+    });
+}
+
 export default function App() {
     const [workspace, setWorkspace] = useState<Workspace>();
     const [, setIsRender] = useState<number>(0);
@@ -154,8 +181,9 @@ export default function App() {
         async function initWorkspace() {
             const myWorkspace = await initializeWorkspace(containerId);
             // Update location
-            if (myWorkspace.containerId)
+            if (myWorkspace.containerId) {
                 window.location.hash = myWorkspace.containerId;
+            }
             // save workspace to react state
             setWorkspace(myWorkspace);
             myWorkspace.tree.storedSchema.update(tableSchema);
@@ -215,34 +243,7 @@ export default function App() {
             </button>
             <button
                 onClick={() => {
-                    const mywrk = workspace!;
-                    const tree = mywrk.tree as SharedTree;
-                    const rootAnchor = tree.rootAnchor();
-                    const colsNr = readColsNumber(workspace);
-                    const cells: any[] = [];
-                    for (let i = 0; i < colsNr; i++) {
-                        cells.push({
-                            type: oneCellSchema.name,
-                            value: 0,
-                        });
-                    }
-
-                    tree.runTransaction((forest, editor) => {
-                        tree.context.prepareForEdit();
-                        const field = editor.sequenceField(
-                            tree.locate(rootAnchor!),
-                            rowKey,
-                        );
-                        const writeCursor = singleTextCursor({
-                            type: oneRowSchema.name,
-                            fields: {
-                                [cellKey]: cells,
-                            },
-                        });
-                        const nrRows = readRowsNumber(mywrk);
-                        field.insert(nrRows, writeCursor);
-                        return TransactionResult.Apply;
-                    });
+                    initSchema(workspace);
                     reRender(setIsRender);
                 }}
             >
@@ -266,7 +267,7 @@ export default function App() {
                             );
                             const writeCursor = singleTextCursor({
                                 type: oneCellSchema.name,
-                                value: 145,
+                                value: 0,
                             });
                             field.insert(colsNr, writeCursor);
                         });
@@ -497,6 +498,7 @@ function renderCells(
             col++;
             reactElem.push(renderCell(workspace, readCursor, row, col));
         }
+        reactElem.push(renderHorizontalPlusCell(workspace, row));
     }
     return reactElem;
 }
@@ -519,6 +521,25 @@ function renderCell(workspace: Workspace, readCursor: ITreeSubscriptionCursor, r
             }}
         >
             {strvalue}
+        </td>,
+    );
+    return reactElem;
+}
+
+function renderHorizontalPlusCell(workspace: Workspace, row: number) {
+    const reactElem: any[] = [];
+    const colsNr = readColsNumber(workspace);
+    reactElem.push(
+        <td
+            className="mpluscell"
+            onClick={() => {
+                for (let i = 0; i < colsNr; i++) {
+                    const numvalue = readCellValue(workspace, row, i);
+                    setCellValueDelAdd(workspace, row, i, numvalue + 1);
+                }
+            }}
+        >
+            {"+"}
         </td>,
     );
     return reactElem;
