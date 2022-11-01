@@ -20,6 +20,7 @@ import {
 } from "@fluid-internal/tree";
 import {
     DefaultChangeFamily,
+    DefaultEditBuilder,
     emptyField,
     FieldKinds,
     singleTextCursor,
@@ -384,6 +385,32 @@ function setCellValueDelAdd(
     });
 }
 
+function setCellValueDelAddInTx(
+    workspace: Workspace | undefined,
+    row: number,
+    col: number,
+    val: number,
+    editor: DefaultEditBuilder,
+) {
+    if (workspace === undefined) {
+        return -1;
+    }
+    const tree = workspace.tree as SharedTree;
+    const myRoot = tree.root!;
+    const rowNodes: any[] = myRoot[rowKey];
+    const rowNode = rowNodes[row];
+    const rowAnchor = rowNode[tree.getAnchorSymbol()];
+    tree.context.prepareForEdit();
+    const field = editor.sequenceField(tree.locate(rowAnchor), cellKey);
+    const writeCursor = singleTextCursor({
+        type: oneCellSchema.name,
+        value: val,
+    });
+    field.delete(col, 1);
+    field.insert(col, writeCursor);
+    return TransactionResult.Apply;
+}
+
 function readRowsNumber(workspace: Workspace | undefined): number {
     if (workspace === undefined) {
         return -1;
@@ -540,10 +567,13 @@ function renderHorizontalPlusCell(workspace: Workspace, row: number) {
         <td
             className="mpluscell"
             onClick={() => {
-                for (let i = 0; i < colsNr; i++) {
-                    const numvalue = readCellValue(workspace, row, i);
-                    setCellValueDelAdd(workspace, row, i, numvalue + 1);
-                }
+                workspace.tree.runTransaction((_forest, editor) => {
+                    for (let i = 0; i < colsNr; i++) {
+                        const numvalue = readCellValue(workspace, row, i);
+                        setCellValueDelAddInTx(workspace, row, i, numvalue + 1, editor);
+                    }
+                    return TransactionResult.Apply;
+                });
             }}
         >
             {"+"}
@@ -566,10 +596,13 @@ function renderVerticalPlusCells(workspace: Workspace) {
             <td
                 className="mpluscell"
                 onClick={() => {
-                    for (let i = 0; i < rowsNr; i++) {
-                        const numvalue = readCellValue(workspace, i, col);
-                        setCellValueDelAdd(workspace, i, col, numvalue + 1);
-                    }
+                    workspace.tree.runTransaction((_forest, editor) => {
+                        for (let i = 0; i < rowsNr; i++) {
+                            const numvalue = readCellValue(workspace, i, col);
+                            setCellValueDelAddInTx(workspace, i, col, numvalue + 1, editor);
+                        }
+                        return TransactionResult.Apply;
+                    });
                 }}
             >
                 {"+"}
@@ -584,17 +617,19 @@ function renderAllPlusCell(workspace: Workspace) {
     const reactElem: any[] = [];
     const rowsNr = readRowsNumber(workspace);
     const colsNr = readColsNumber(workspace);
-
     reactElem.push(
         <td
             className="mpluscell"
             onClick={() => {
-                for (let i = 0; i < rowsNr; i++) {
-                    for (let j = 0; j < colsNr; j++) {
-                        const numvalue = readCellValue(workspace, i, j);
-                        setCellValueDelAdd(workspace, i, j, numvalue + 1);
+                workspace.tree.runTransaction((_forest, editor) => {
+                    for (let i = 0; i < rowsNr; i++) {
+                        for (let j = 0; j < colsNr; j++) {
+                            const numvalue = readCellValue(workspace, i, j);
+                            setCellValueDelAddInTx(workspace, i, j, numvalue + 1, editor);
+                        }
                     }
-                }
+                    return TransactionResult.Apply;
+                });
             }}
         >
             {"+"}
