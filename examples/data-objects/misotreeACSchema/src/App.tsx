@@ -155,10 +155,7 @@ function initSchema(workspace) {
     }
     tree.runTransaction((forest, editor) => {
         tree.context.prepareForEdit();
-        const field = editor.sequenceField(
-            tree.locate(rootAnchor!),
-            rowKey,
-        );
+        const field = editor.sequenceField(tree.locate(rootAnchor!), rowKey);
         const writeCursor = singleTextCursor({
             type: oneRowSchema.name,
             fields: {
@@ -468,6 +465,7 @@ function renderRows(workspace: Workspace | undefined) {
                     reactElem.push(renderRow(workspace, readCursor, row));
                     readCursor.exitField();
                 }
+                reactElem.push(renderVerticalPlusRow(workspace));
             }
         }
     } finally {
@@ -477,7 +475,11 @@ function renderRows(workspace: Workspace | undefined) {
     return reactElem;
 }
 
-function renderRow(workspace: Workspace, readCursor: ITreeSubscriptionCursor, row: number) {
+function renderRow(
+    workspace: Workspace,
+    readCursor: ITreeSubscriptionCursor,
+    row: number,
+) {
     const reactElem: any[] = [];
     reactElem.push(renderCells(workspace, readCursor, row));
     const rowElem = <tr>{reactElem}</tr>;
@@ -503,7 +505,12 @@ function renderCells(
     return reactElem;
 }
 
-function renderCell(workspace: Workspace, readCursor: ITreeSubscriptionCursor, row: number, col: number) {
+function renderCell(
+    workspace: Workspace,
+    readCursor: ITreeSubscriptionCursor,
+    row: number,
+    col: number,
+) {
     const reactElem: any[] = [];
     const strvalue: string = readCursor.value! as string;
     const numvalue: number = Number(strvalue);
@@ -536,6 +543,57 @@ function renderHorizontalPlusCell(workspace: Workspace, row: number) {
                 for (let i = 0; i < colsNr; i++) {
                     const numvalue = readCellValue(workspace, row, i);
                     setCellValueDelAdd(workspace, row, i, numvalue + 1);
+                }
+            }}
+        >
+            {"+"}
+        </td>,
+    );
+    return reactElem;
+}
+function renderVerticalPlusRow(workspace: Workspace) {
+    const reactElem: any[] = [];
+    reactElem.push(<tr>{renderVerticalPlusCells(workspace)}</tr>);
+    return reactElem;
+}
+
+function renderVerticalPlusCells(workspace: Workspace) {
+    const reactElem: any[] = [];
+    const rowsNr = readRowsNumber(workspace);
+    const colsNr = readColsNumber(workspace);
+    for (let col = 0; col < colsNr; col++) {
+        reactElem.push(
+            <td
+                className="mpluscell"
+                onClick={() => {
+                    for (let i = 0; i < rowsNr; i++) {
+                        const numvalue = readCellValue(workspace, i, col);
+                        setCellValueDelAdd(workspace, i, col, numvalue + 1);
+                    }
+                }}
+            >
+                {"+"}
+            </td>,
+        );
+    }
+    reactElem.push(renderAllPlusCell(workspace));
+    return reactElem;
+}
+
+function renderAllPlusCell(workspace: Workspace) {
+    const reactElem: any[] = [];
+    const rowsNr = readRowsNumber(workspace);
+    const colsNr = readColsNumber(workspace);
+
+    reactElem.push(
+        <td
+            className="mpluscell"
+            onClick={() => {
+                for (let i = 0; i < rowsNr; i++) {
+                    for (let j = 0; j < colsNr; j++) {
+                        const numvalue = readCellValue(workspace, i, j);
+                        setCellValueDelAdd(workspace, i, j, numvalue + 1);
+                    }
                 }
             }}
         >
