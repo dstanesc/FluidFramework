@@ -42,6 +42,11 @@ import {
     getEditableTreeContext,
     SchemaEditor,
     DefaultChangeset,
+    anchorSymbol,
+    isUnwrappedNode,
+    proxyTargetSymbol,
+    getTypeSymbol,
+    valueSymbol,
 } from "../feature-libraries";
 
 /**
@@ -97,7 +102,7 @@ export interface ISharedTree extends ICheckout<DefaultEditBuilder>, ISharedObjec
  * TODO: detail compatibility requirements.
  * TODO: expose or implement Checkout.
  */
-class SharedTree
+export class SharedTree
     extends SharedTreeCore<FieldChangeMap, DefaultChangeFamily>
     implements ISharedTree
 {
@@ -176,6 +181,31 @@ class SharedTree
         if (!this.storedSchema.tryHandleOp(message)) {
             super.processCore(message, local, localOpMetadata);
         }
+    }
+    public static getFactory(): IChannelFactory {
+        return new SharedTreeFactory();
+    }
+
+    public rootAnchor() {
+        if (isUnwrappedNode(this.root)) {
+            return this.root[anchorSymbol];
+        }
+    }
+
+    public getProxyTargetSymbol() {
+        return proxyTargetSymbol;
+    }
+
+    public getGetTypeSymbol() {
+        return getTypeSymbol;
+    }
+
+    public getValueSymbol() {
+        return valueSymbol;
+    }
+
+    public getAnchorSymbol() {
+        return anchorSymbol;
     }
 }
 

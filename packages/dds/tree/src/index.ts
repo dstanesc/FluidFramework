@@ -168,4 +168,4 @@ export {
     NodeCount,
 } from "./feature-libraries";
 
-export { ISharedTree, SharedTreeFactory } from "./shared-tree";
+export { ISharedTree, SharedTreeFactory, SharedTree } from "./shared-tree";

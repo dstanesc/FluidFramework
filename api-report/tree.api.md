@@ -8,11 +8,19 @@ import { IChannel } from '@fluidframework/datastore-definitions';
 import { IChannelAttributes } from '@fluidframework/datastore-definitions';
 import { IChannelFactory } from '@fluidframework/datastore-definitions';
 import { IChannelServices } from '@fluidframework/datastore-definitions';
+import { IChannelStorageService } from '@fluidframework/datastore-definitions';
 import { IFluidDataStoreRuntime } from '@fluidframework/datastore-definitions';
+import { IFluidSerializer } from '@fluidframework/shared-object-base';
+import { IGarbageCollectionData } from '@fluidframework/runtime-definitions';
+import { ISequencedDocumentMessage } from '@fluidframework/protocol-definitions';
 import { ISharedObject } from '@fluidframework/shared-object-base';
+import { ISharedObjectEvents } from '@fluidframework/shared-object-base';
 import { IsoBuffer } from '@fluidframework/common-utils';
+import { ISummaryTreeWithStats } from '@fluidframework/runtime-definitions';
+import { ITelemetryContext } from '@fluidframework/runtime-definitions';
 import { Jsonable } from '@fluidframework/datastore-definitions';
 import { Serializable } from '@fluidframework/datastore-definitions';
+import { SharedObject } from '@fluidframework/shared-object-base';
 
 // @public
 export type Anchor = Brand<number, "rebaser.Anchor">;
@@ -1252,6 +1260,36 @@ const sequenceFieldEditor: SequenceFieldEditor;
 
 // @public (undocumented)
 function sequenceFieldToDelta<TNodeChange>(marks: MarkList_2<TNodeChange>, deltaFromChild: ToDelta_2<TNodeChange>): Delta.MarkList;
+
+// @public
+export class SharedTree extends SharedTreeCore<FieldChangeMap, DefaultChangeFamily> implements ISharedTree {
+    constructor(id: string, runtime: IFluidDataStoreRuntime, attributes: IChannelAttributes, telemetryContextPrefix: string);
+    // (undocumented)
+    readonly context: EditableTreeContext;
+    // (undocumented)
+    readonly forest: IForestSubscription;
+    // (undocumented)
+    getAnchorSymbol(): symbol;
+    // (undocumented)
+    static getFactory(): IChannelFactory;
+    // (undocumented)
+    getGetTypeSymbol(): symbol;
+    // (undocumented)
+    getProxyTargetSymbol(): symbol;
+    // (undocumented)
+    getValueSymbol(): symbol;
+    // (undocumented)
+    locate(anchor: Anchor): UpPath | undefined;
+    protected processCore(message: ISequencedDocumentMessage, local: boolean, localOpMetadata: unknown): void;
+    // (undocumented)
+    get root(): UnwrappedEditableField;
+    // (undocumented)
+    rootAnchor(): Anchor | undefined;
+    // (undocumented)
+    runTransaction(transaction: (forest: IForestSubscription, editor: DefaultEditBuilder) => TransactionResult): TransactionResult;
+    // (undocumented)
+    readonly storedSchema: SchemaEditor;
+}
 
 // @public
 export class SharedTreeFactory implements IChannelFactory {
