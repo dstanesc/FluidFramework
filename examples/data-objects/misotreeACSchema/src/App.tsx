@@ -63,8 +63,8 @@ const tableSchema: SchemaData = {
     globalFieldSchema: new Map(),
 };
 
-const tableRows = 12;
-const tableCols = 12;
+const tableRows = 24;
+const tableCols = 36;
 function genInitialTable() {
     const cells: any[] = [];
     const rows: any[] = [];
@@ -275,6 +275,14 @@ export default function App() {
                 }}
             >
                 ADD COLUMN
+            </button>
+            <button
+                onClick={() => {
+                    plus100AllOneByOne(workspace!);
+                    reRender(setIsRender);
+                }}
+            >
+                PLUS 100 (multi-tx)
             </button>
             <button
                 onClick={() => {
@@ -636,6 +644,19 @@ function renderAllPlusCell(workspace: Workspace) {
         </td>,
     );
     return reactElem;
+}
+
+function plus100AllOneByOne(workspace: Workspace) {
+    const rowsNr = readRowsNumber(workspace);
+    const colsNr = readColsNumber(workspace);
+    for (let k = 0; k < 100; k++) {
+        for (let i = 0; i < rowsNr; i++) {
+            for (let j = 0; j < colsNr; j++) {
+                const numvalue = readCellValue(workspace, i, j);
+                setCellValueDelAdd(workspace, i, j, numvalue + 1);
+            }
+        }
+    }
 }
 
 function reRender(setIsRender) {
