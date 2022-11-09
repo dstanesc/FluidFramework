@@ -278,11 +278,19 @@ export default function App() {
             </button>
             <button
                 onClick={() => {
-                    plus100AllOneByOne(workspace!);
+                    plus10AllOneByOne(workspace!);
                     reRender(setIsRender);
                 }}
             >
-                PLUS 100 (multi-tx)
+                PLUS 10 (multi-tx)
+            </button>
+            <button
+                onClick={() => {
+                    plus10AllOneTx(workspace!);
+                    reRender(setIsRender);
+                }}
+            >
+                PLUS 10 (one-tx)
             </button>
             <button
                 onClick={() => {
@@ -646,10 +654,10 @@ function renderAllPlusCell(workspace: Workspace) {
     return reactElem;
 }
 
-function plus100AllOneByOne(workspace: Workspace) {
+function plus10AllOneByOne(workspace: Workspace) {
     const rowsNr = readRowsNumber(workspace);
     const colsNr = readColsNumber(workspace);
-    for (let k = 0; k < 100; k++) {
+    for (let k = 0; k < 10; k++) {
         for (let i = 0; i < rowsNr; i++) {
             for (let j = 0; j < colsNr; j++) {
                 const numvalue = readCellValue(workspace, i, j);
@@ -657,6 +665,22 @@ function plus100AllOneByOne(workspace: Workspace) {
             }
         }
     }
+}
+
+function plus10AllOneTx(workspace: Workspace) {
+    workspace.tree.runTransaction((_forest, editor) => {
+        const rowsNr = readRowsNumber(workspace);
+        const colsNr = readColsNumber(workspace);
+        for (let k = 0; k < 10; k++) {
+            for (let i = 0; i < rowsNr; i++) {
+                for (let j = 0; j < colsNr; j++) {
+                    const numvalue = readCellValue(workspace, i, j);
+                    setCellValueDelAddInTx(workspace, i, j, numvalue + 1, editor);
+                }
+            }
+        }
+        return TransactionResult.Apply;
+    });
 }
 
 function reRender(setIsRender) {
