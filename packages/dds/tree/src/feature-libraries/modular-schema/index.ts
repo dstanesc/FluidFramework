@@ -26,6 +26,8 @@ export {
     NodeChangeInverter,
     NodeChangeRebaser,
     NodeChangeset,
+    NodeReviver,
+    referenceFreeFieldChangeRebaser,
     ToDelta,
     ValueChange,
 } from "./fieldChangeHandler";

@@ -26,6 +26,7 @@ export {
     AnchorSet,
     DetachedField,
     UpPath,
+    FieldUpPath,
     Anchor,
     RootField,
     ChildCollection,
@@ -60,6 +61,9 @@ export {
     visitDelta,
     setGenericTreeField,
     rootFieldKeySymbol,
+    DeltaVisitor,
+    SparseNode,
+    getDescendant,
 } from "../tree";
 
 export {
@@ -72,6 +76,9 @@ export {
     ITreeSubscriptionCursor,
     ITreeSubscriptionCursorState,
     initializeForest,
+    FieldAnchor,
+    moveToDetachedField,
+    afterChangeToken,
 } from "../forest";
 
 export {
@@ -107,11 +114,19 @@ export {
     ProgressiveEditBuilderBase,
 } from "../change-family";
 
-export { Rebaser, ChangeRebaser, RevisionTag, ChangesetFromChangeRebaser } from "../rebase";
+export {
+    Rebaser,
+    ChangeRebaser,
+    RevisionTag,
+    TaggedChange,
+    ChangesetFromChangeRebaser,
+    makeAnonChange,
+    tagChange,
+} from "../rebase";
 
 export { ICheckout, TransactionResult } from "../checkout";
 
-export { Checkout, runSynchronousTransaction } from "../transaction";
+export { Checkout } from "../transaction";
 
 export {
     Index,
@@ -128,3 +143,14 @@ export {
     Compatibility,
     FieldAdapter,
 } from "../schema-view";
+
+export {
+    Branch,
+    Commit,
+    EditManager,
+    MutableSummaryData,
+    ReadonlySummaryData,
+    SessionId,
+} from "../edit-manager";
+
+export { RepairDataStore, ReadonlyRepairDataStore } from "../repair";

@@ -20,7 +20,7 @@ export {
     symbolIsFieldKey,
 } from "./globalFieldKeySymbol";
 export { getMapTreeField, MapTree } from "./mapTree";
-export { clonePath, getDepth, UpPath } from "./pathTree";
+export { clonePath, getDepth, UpPath, FieldUpPath } from "./pathTree";
 export {
     FieldMapObject,
     FieldScope,
@@ -49,9 +49,12 @@ export {
     rootFieldKey,
     NodeData,
     rootFieldKeySymbol,
+    rootField,
 } from "./types";
 export { DeltaVisitor, visitDelta } from "./visitDelta";
 
 // Split this up into separate import and export for compatibility with API-Extractor.
 import * as Delta from "./delta";
 export { Delta };
+
+export { SparseNode, getDescendant } from "./sparseTree";

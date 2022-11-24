@@ -12,10 +12,10 @@ import {
     AnchorSet,
     Delta,
     FieldKey,
-    ITreeCursorSynchronous,
     UpPath,
     Value,
     ITreeCursor,
+    ReadonlyRepairDataStore,
 } from "../core";
 import { brand } from "../util";
 import {
@@ -53,38 +53,25 @@ export class DefaultChangeFamily implements ChangeFamily<DefaultEditBuilder, Def
         return this.modularFamily.encoder;
     }
 
-    intoDelta(change: DefaultChangeset): Delta.Root<ITreeCursorSynchronous> {
-        return this.modularFamily.intoDelta(change);
+    intoDelta(change: DefaultChangeset, repairStore?: ReadonlyRepairDataStore): Delta.Root {
+        return this.modularFamily.intoDelta(change, repairStore);
     }
 
     buildEditor(
-        deltaReceiver: (delta: Delta.Root<ITreeCursorSynchronous>) => void,
+        changeReceiver: (change: DefaultChangeset) => void,
         anchorSet: AnchorSet,
     ): DefaultEditBuilder {
-        return new DefaultEditBuilder(this, deltaReceiver, anchorSet);
+        return new DefaultEditBuilder(this, changeReceiver, anchorSet);
     }
 }
 
 export const defaultChangeFamily = new DefaultChangeFamily();
 
 /**
- * Implementation of {@link ProgressiveEditBuilder} based on the default set of supported field kinds.
- * @sealed
+ * Default editor for transactions.
  */
-export class DefaultEditBuilder implements ProgressiveEditBuilder<DefaultChangeset> {
-    private readonly modularBuilder: ModularEditBuilder;
-
-    constructor(
-        family: ChangeFamily<unknown, DefaultChangeset>,
-        deltaReceiver: (delta: Delta.Root) => void,
-        anchors: AnchorSet,
-    ) {
-        this.modularBuilder = new ModularEditBuilder(family, deltaReceiver, anchors);
-    }
-
-    public setValue(path: UpPath, value: Value): void {
-        this.modularBuilder.setValue(path, value);
-    }
+export interface IDefaultEditBuilder {
+    setValue(path: UpPath, value: Value): void;
 
     /**
      * @param parent - path to the parent node of the value field being edited
@@ -93,6 +80,52 @@ export class DefaultEditBuilder implements ProgressiveEditBuilder<DefaultChanges
      * The returned object can be used (i.e., have its methods called) multiple times but its lifetime
      * is bounded by the lifetime of this edit builder.
      */
+    valueField(parent: UpPath | undefined, field: FieldKey): ValueFieldEditBuilder;
+
+    /**
+     * @param parent - path to the parent node of the optional field being edited
+     * @param field - the optional field which is being edited under the parent node
+     * @returns An object with methods to edit the given field of the given parent.
+     * The returned object can be used (i.e., have its methods called) multiple times but its lifetime
+     * is bounded by the lifetime of this edit builder.
+     */
+    optionalField(parent: UpPath | undefined, field: FieldKey): OptionalFieldEditBuilder;
+
+    /**
+     * @param parent - path to the parent node of the sequence field being edited
+     * @param field - the sequence field which is being edited under the parent node
+     * @returns An object with methods to edit the given field of the given parent.
+     * The returned object can be used (i.e., have its methods called) multiple times but its lifetime
+     * is bounded by the lifetime of this edit builder.
+     */
+    sequenceField(parent: UpPath | undefined, field: FieldKey): SequenceFieldEditBuilder;
+}
+
+/**
+ * Implementation of {@link ProgressiveEditBuilder} based on the default set of supported field kinds.
+ * @sealed
+ */
+export class DefaultEditBuilder
+    implements ProgressiveEditBuilder<DefaultChangeset>, IDefaultEditBuilder
+{
+    private readonly modularBuilder: ModularEditBuilder;
+
+    constructor(
+        family: ChangeFamily<unknown, DefaultChangeset>,
+        changeReceiver: (change: DefaultChangeset) => void,
+        anchors: AnchorSet,
+    ) {
+        this.modularBuilder = new ModularEditBuilder(family, changeReceiver, anchors);
+    }
+
+    public apply(change: DefaultChangeset): void {
+        this.modularBuilder.apply(change);
+    }
+
+    public setValue(path: UpPath, value: Value): void {
+        this.modularBuilder.setValue(path, value);
+    }
+
     public valueField(parent: UpPath | undefined, field: FieldKey): ValueFieldEditBuilder {
         return {
             set: (newContent: ITreeCursor): void => {
@@ -104,13 +137,6 @@ export class DefaultEditBuilder implements ProgressiveEditBuilder<DefaultChanges
         };
     }
 
-    /**
-     * @param parent - path to the parent node of the optional field being edited
-     * @param field - the optional field which is being edited under the parent node
-     * @returns An object with methods to edit the given field of the given parent.
-     * The returned object can be used (i.e., have its methods called) multiple times but its lifetime
-     * is bounded by the lifetime of this edit builder.
-     */
     public optionalField(parent: UpPath | undefined, field: FieldKey): OptionalFieldEditBuilder {
         return {
             set: (newContent: ITreeCursor | undefined, wasEmpty: boolean): void => {
@@ -122,13 +148,6 @@ export class DefaultEditBuilder implements ProgressiveEditBuilder<DefaultChanges
         };
     }
 
-    /**
-     * @param parent - path to the parent node of the sequence field being edited
-     * @param field - the sequence field which is being edited under the parent node
-     * @returns An object with methods to edit the given field of the given parent.
-     * The returned object can be used (i.e., have its methods called) multiple times but its lifetime
-     * is bounded by the lifetime of this edit builder.
-     */
     public sequenceField(parent: UpPath | undefined, field: FieldKey): SequenceFieldEditBuilder {
         return {
             insert: (index: number, newContent: ITreeCursor | ITreeCursor[]): void => {
