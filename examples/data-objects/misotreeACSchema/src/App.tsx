@@ -10,28 +10,26 @@
 
 import {
     brand,
-    FieldChangeMap,
     IForestSubscription,
     ITreeSubscriptionCursor,
     SchemaData,
     SharedTree,
     TransactionResult,
-    TreeNavigationResult,
-} from "@fluid-internal/tree";
-import {
-    DefaultChangeFamily,
-    DefaultEditBuilder,
     emptyField,
     FieldKinds,
     singleTextCursor,
-} from "@fluid-internal/tree/dist/feature-libraries";
-import {
+    IDefaultEditBuilder,
+    FieldKey,
+    checkRootSymbol,
+    checkSymbol,
+    michaelo,
+    misoSymbol,
+    rootFieldKeySymbol,
     fieldSchema,
     namedTreeSchema,
     ValueSchema,
-} from "@fluid-internal/tree/dist/schema-stored";
-import { SharedTreeCore } from "@fluid-internal/tree/dist/shared-tree-core";
-import { detachedFieldAsKey, FieldKey } from "@fluid-internal/tree/dist/tree";
+    moveToDetachedField,
+} from "@fluid-internal/tree";
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import { initializeWorkspace, Workspace } from "./tracking/workspace2";
@@ -49,7 +47,9 @@ const oneCellValueSchema = namedTreeSchema({
 const oneCellSchema = namedTreeSchema({
     name: brand("OneCellSchema"),
     localFields: {
-        [cellValueKey]: fieldSchema(FieldKinds.value, [oneCellValueSchema.name]),
+        [cellValueKey]: fieldSchema(FieldKinds.value, [
+            oneCellValueSchema.name,
+        ]),
     },
     extraLocalFields: emptyField,
 });
@@ -68,15 +68,18 @@ const oneTableSchema = namedTreeSchema({
     extraLocalFields: emptyField,
 });
 const tableSchema: SchemaData = {
-    treeSchema: new Map([[oneTableSchema.name, oneTableSchema],
-    [oneRowSchema.name, oneRowSchema],
-    [oneCellSchema.name, oneCellSchema],
-    [oneCellValueSchema.name, oneCellValueSchema]]),
+    treeSchema: new Map([
+        [oneTableSchema.name, oneTableSchema],
+        [oneRowSchema.name, oneRowSchema],
+        [oneCellSchema.name, oneCellSchema],
+        [oneCellValueSchema.name, oneCellValueSchema],
+    ]),
     globalFieldSchema: new Map(),
 };
 
 const tableRows = 8;
 const tableCols = 12;
+/*
 function addRow(workspace) {
     const tree = workspace.tree as SharedTree;
     const rootAnchor = tree.rootAnchor();
@@ -98,7 +101,6 @@ function addRow(workspace) {
             },
         });
     }
-
     tree.runTransaction((forest, editor) => {
         tree.context.prepareForEdit();
         const field = editor.sequenceField(tree.locate(rootAnchor!), rowKey);
@@ -115,6 +117,8 @@ function addRow(workspace) {
         return TransactionResult.Apply;
     });
 }
+*/
+
 function genInitialTable() {
     const cellValues: any[] = [];
     const cells: any[] = [];
@@ -158,47 +162,36 @@ function getColor(value: number): string {
     switch (modulo) {
         case 0: {
             return "grey";
-            break;
         }
         case 1: {
             return "blue";
-            break;
         }
         case 2: {
             return "red";
-            break;
         }
         case 3: {
             return "yellow";
-            break;
         }
         case 4: {
             return "darkcyan";
-            break;
         }
         case 5: {
             return "firebrick";
-            break;
         }
         case 6: {
             return "orange";
-            break;
         }
         case 7: {
             return "purple";
-            break;
         }
         case 8: {
             return "magenta";
-            break;
         }
         case 9: {
             return "cyan";
-            break;
         }
         default: {
             return "black";
-            break;
         }
     }
 }
@@ -232,24 +225,6 @@ export default function App() {
                 // console.log(typeof event);
                 // console.log("Tree error received!");
             });
-            (
-                myWorkspace.tree as unknown as SharedTreeCore<
-                    FieldChangeMap,
-                    DefaultChangeFamily
-                >
-            ).on("updated", (event) => {
-                // console.log(typeof event);
-                // console.log("Tree updated received!");
-            });
-            (
-                myWorkspace.tree as unknown as SharedTreeCore<
-                    FieldChangeMap,
-                    DefaultChangeFamily
-                >
-            ).on("valueChanged", (event) => {
-                // console.log(typeof event);
-                // console.log("Tree value changed received!");
-            });
         }
         initWorkspace();
         setIsRender(0);
@@ -259,15 +234,72 @@ export default function App() {
             <h1>Shared Tree Table</h1>
             <button
                 onClick={() => {
-                    workspace!.tree.runTransaction((f, editor) => {
-                        const writeCursor = singleTextCursor(initialTable);
+                    console.log(checkSymbol(misoSymbol));
+                    console.log(checkSymbol(workspace!.tree.getMisoSymbol()));
+                    console.log(checkRootSymbol(rootFieldKeySymbol));
+                    console.log(
+                        checkRootSymbol(workspace!.tree.getRootFieldKeySymbol())
+                    );
+                    console.log(michaelo);
+                    console.log(workspace!.tree.getMichaelo());
+                    const tree = workspace!.tree;
+                    const forest2 = tree.forest;
+                    tree.runTransaction((forest, editor) => {
+                        const writeCursor = singleTextCursor({
+                            type: brand("LonelyNode"),
+                        });
                         const field = editor.sequenceField(
                             undefined,
-                            detachedFieldAsKey(f.rootField),
+                            tree.getRootFieldKeySymbol()
                         );
                         field.insert(0, writeCursor);
                         return TransactionResult.Apply;
                     });
+                    const readCursor = forest2.allocateCursor();
+                    moveToDetachedField(forest2, readCursor);
+                    console.log("First Read");
+                    console.log(readCursor.firstNode());
+                    readCursor.free();
+                    console.log(initialTable);
+                    reRender(setIsRender);
+                }}
+            >
+                HACK
+            </button>
+            <button
+                onClick={() => {
+                    const tree = workspace!.tree;
+                    const forest2 = tree.forest;
+                    /*
+                    tree.runTransaction((forest, editor) => {
+                        const writeCursor = singleTextCursor({ type: brand("LonelyNode") });
+                        const field = editor.sequenceField(undefined, tree.getRootFieldKeySymbol());
+                        field.insert(0, writeCursor);
+                        return TransactionResult.Apply;
+                    });
+                    const readCursor = forest2.allocateCursor();
+                    moveToDetachedField(forest2, readCursor);
+                    console.log("First Read");
+                    console.log(readCursor.firstNode());
+                    readCursor.free();
+                    console.log(initialTable);
+*/
+                    console.log("initialTable");
+                    console.log(initialTable);
+                    tree.runTransaction((forest, editor) => {
+                        const writeCursor = singleTextCursor(initialTable);
+                        const rootField = editor.sequenceField(
+                            undefined,
+                            workspace!.tree.getRootFieldKeySymbol()
+                        );
+                        rootField.insert(0, writeCursor);
+                        return TransactionResult.Apply;
+                    });
+                    const readCursor = forest2.allocateCursor();
+                    moveToDetachedField(forest2, readCursor);
+                    console.log("First Read");
+                    console.log(readCursor.firstNode());
+                    readCursor.free();
                     reRender(setIsRender);
                 }}
             >
@@ -275,7 +307,7 @@ export default function App() {
             </button>
             <button
                 onClick={() => {
-                    addRow(workspace);
+                    // addRow(workspace);
                     reRender(setIsRender);
                 }}
             >
@@ -291,19 +323,21 @@ export default function App() {
                     const colsNr = readColsNumber(workspace);
                     tree.runTransaction((forest, editor) => {
                         rowNodes.forEach((rowNode) => {
-                            const rowAnchor = rowNode[tree.getAnchorSymbol()];
+                            const rowAnchor: any = ""; // = rowNode[tree.getAnchorSymbol()];
                             tree.context.prepareForEdit();
                             const field = editor.sequenceField(
                                 tree.locate(rowAnchor),
-                                cellKey,
+                                cellKey
                             );
                             const writeCursor = singleTextCursor({
                                 type: oneCellSchema.name,
                                 fields: {
-                                    [cellValueKey]: [{
-                                        type: oneCellValueSchema.name,
-                                        value: 0,
-                                    }],
+                                    [cellValueKey]: [
+                                        {
+                                            type: oneCellValueSchema.name,
+                                            value: 0,
+                                        },
+                                    ],
                                 },
                             });
                             field.insert(colsNr, writeCursor);
@@ -345,7 +379,7 @@ export default function App() {
 function readCellValue(
     workspace: Workspace | undefined,
     row: number,
-    col: number,
+    col: number
 ): number {
     if (workspace === undefined) {
         return -1;
@@ -353,21 +387,19 @@ function readCellValue(
     let numvalue = -1;
     const { forest, readCursor } = openReadCursor(workspace);
     try {
-        const destination = forest.root(forest.rootField);
-        const moveResult = forest.tryMoveCursorTo(destination, readCursor);
-        if (moveResult === TreeNavigationResult.Ok) {
-            readCursor.enterField(rowKey);
-            if (readCursor.firstNode()) {
-                if (readCursor.seekNodes(row)) {
-                    readCursor.enterField(cellKey);
-                    if (readCursor.firstNode()) {
-                        if (readCursor.seekNodes(col)) {
-                            readCursor.enterField(cellValueKey);
-                            if (readCursor.firstNode()) {
-                                const strvalue: string =
+        moveToDetachedField(forest, readCursor);
+        readCursor.firstNode();
+        readCursor.enterField(rowKey);
+        if (readCursor.firstNode()) {
+            if (readCursor.seekNodes(row)) {
+                readCursor.enterField(cellKey);
+                if (readCursor.firstNode()) {
+                    if (readCursor.seekNodes(col)) {
+                        readCursor.enterField(cellValueKey);
+                        if (readCursor.firstNode()) {
+                            const strvalue: string =
                                 readCursor.value! as string;
-                                numvalue = Number(strvalue);
-                            }
+                            numvalue = Number(strvalue);
                         }
                     }
                 }
@@ -383,27 +415,40 @@ function setCellValueDelAdd(
     workspace: Workspace | undefined,
     row: number,
     col: number,
-    val: number,
+    val: number
 ) {
     if (workspace === undefined) {
         return -1;
     }
     const tree = workspace.tree as SharedTree;
-    const myRoot = tree.root!;
-    const rowNodes: any[] = myRoot[rowKey];
-    const rowNode = rowNodes[row];
-    const cellNodes = rowNode[cellKey];
-    const cellNode = cellNodes[col];
-    const cellAnchor = cellNode[tree.getAnchorSymbol()];
-
     tree.runTransaction((forest, editor) => {
         tree.context.prepareForEdit();
-        const field = editor.valueField(tree.locate(cellAnchor), cellValueKey);
+
+        // const rootField = editor.sequenceField(undefined, rootFieldKeySymbol);
+        const rootPath = {
+            parent: undefined,
+            parentField: tree.getRootFieldKeySymbol(),
+            parentIndex: 0,
+        };
+        // const rowField = editor.sequenceField(rootPath, rowKey);
+        const rowPath = {
+            parent: rootPath,
+            parentField: rowKey,
+            parentIndex: row,
+        };
+        // const cellField = editor.sequenceField(rowPath, cellKey);
+        const cellPath = {
+            parent: rowPath,
+            parentField: cellKey,
+            parentIndex: col,
+        };
+        const cellValueField = editor.valueField(cellPath, cellValueKey);
+
         const writeCursor = singleTextCursor({
             type: oneCellSchema.name,
             value: val,
         });
-        field.set(writeCursor);
+        cellValueField.set(writeCursor);
         return TransactionResult.Apply;
     });
 }
@@ -413,26 +458,40 @@ function setCellValueDelAddInTx(
     row: number,
     col: number,
     val: number,
-    editor: DefaultEditBuilder,
+    editor: IDefaultEditBuilder
 ) {
     if (workspace === undefined) {
         return -1;
     }
     const tree = workspace.tree as SharedTree;
-    const myRoot = tree.root!;
-    const rowNodes: any[] = myRoot[rowKey];
-    const rowNode = rowNodes[row];
-    const cellNodes = rowNode[cellKey];
-    const cellNode = cellNodes[col];
-    const cellAnchor = cellNode[tree.getAnchorSymbol()];
+    //   const cellNode = cellNodes[col];
     tree.context.prepareForEdit();
-    const field = editor.valueField(tree.locate(cellAnchor), cellValueKey);
+
+    // const rootField = editor.sequenceField(undefined, rootFieldKeySymbol);
+    const rootPath = {
+        parent: undefined,
+        parentField: tree.getRootFieldKeySymbol(),
+        parentIndex: 0,
+    };
+    // const rowField = editor.sequenceField(rootPath, rowKey);
+    const rowPath = {
+        parent: rootPath,
+        parentField: rowKey,
+        parentIndex: row,
+    };
+    // const cellField = editor.sequenceField(rowPath, cellKey);
+    const cellPath = {
+        parent: rowPath,
+        parentField: cellKey,
+        parentIndex: col,
+    };
+    const cellValueField = editor.valueField(cellPath, cellValueKey);
+
     const writeCursor = singleTextCursor({
         type: oneCellSchema.name,
         value: val,
     });
-    field.set(writeCursor);
-    return TransactionResult.Apply;
+    cellValueField.set(writeCursor);
 }
 
 function readRowsNumber(workspace: Workspace | undefined): number {
@@ -442,15 +501,13 @@ function readRowsNumber(workspace: Workspace | undefined): number {
     let nrRows = 0;
     const { forest, readCursor } = openReadCursor(workspace);
     try {
-        const destination = forest.root(forest.rootField);
-        const moveResult = forest.tryMoveCursorTo(destination, readCursor);
-        if (moveResult === TreeNavigationResult.Ok) {
-            readCursor.enterField(rowKey);
-            if (readCursor.firstNode()) {
+        moveToDetachedField(forest, readCursor);
+        readCursor.firstNode();
+        readCursor.enterField(rowKey);
+        if (readCursor.firstNode()) {
+            nrRows++;
+            while (readCursor.nextNode()) {
                 nrRows++;
-                while (readCursor.nextNode()) {
-                    nrRows++;
-                }
             }
         }
     } finally {
@@ -466,17 +523,15 @@ function readColsNumber(workspace: Workspace | undefined): number {
     let nrCols = 0;
     const { forest, readCursor } = openReadCursor(workspace);
     try {
-        const destination = forest.root(forest.rootField);
-        const moveResult = forest.tryMoveCursorTo(destination, readCursor);
-        if (moveResult === TreeNavigationResult.Ok) {
-            readCursor.enterField(rowKey);
+        moveToDetachedField(forest, readCursor);
+        readCursor.firstNode();
+        readCursor.enterField(rowKey);
+        if (readCursor.firstNode()) {
+            readCursor.enterField(cellKey);
             if (readCursor.firstNode()) {
-                readCursor.enterField(cellKey);
-                if (readCursor.firstNode()) {
+                nrCols++;
+                while (readCursor.nextNode()) {
                     nrCols++;
-                    while (readCursor.nextNode()) {
-                        nrCols++;
-                    }
                 }
             }
         }
@@ -503,21 +558,21 @@ function renderRows(workspace: Workspace | undefined) {
     }
     const { forest, readCursor } = openReadCursor(workspace);
     try {
-        const destination = forest.root(forest.rootField);
-        const moveResult = forest.tryMoveCursorTo(destination, readCursor);
-        if (moveResult === TreeNavigationResult.Ok) {
-            readCursor.enterField(rowKey);
-            let row = 0;
-            if (readCursor.firstNode()) {
+        moveToDetachedField(forest, readCursor);
+        if (!readCursor.firstNode()) {
+            return reactElem;
+        }
+        readCursor.enterField(rowKey);
+        let row = 0;
+        if (readCursor.firstNode()) {
+            reactElem.push(renderRow(workspace, readCursor, row));
+            readCursor.exitField();
+            while (readCursor.nextNode()) {
+                row++;
                 reactElem.push(renderRow(workspace, readCursor, row));
                 readCursor.exitField();
-                while (readCursor.nextNode()) {
-                    row++;
-                    reactElem.push(renderRow(workspace, readCursor, row));
-                    readCursor.exitField();
-                }
-                reactElem.push(renderVerticalPlusRow(workspace));
             }
+            reactElem.push(renderVerticalPlusRow(workspace));
         }
     } finally {
         readCursor.free();
@@ -529,7 +584,7 @@ function renderRows(workspace: Workspace | undefined) {
 function renderRow(
     workspace: Workspace,
     readCursor: ITreeSubscriptionCursor,
-    row: number,
+    row: number
 ) {
     const reactElem: any[] = [];
     reactElem.push(renderCells(workspace, readCursor, row));
@@ -540,7 +595,7 @@ function renderRow(
 function renderCells(
     workspace: Workspace,
     readCursor: ITreeSubscriptionCursor,
-    row: number,
+    row: number
 ) {
     const reactElem: any[] = [];
     readCursor.enterField(cellKey);
@@ -549,7 +604,7 @@ function renderCells(
         readCursor.enterField(cellValueKey);
         readCursor.firstNode();
         reactElem.push(renderCell(workspace, readCursor, row, col));
-         // because we do not call nextNode with false result which calls this automatically
+        // because we do not call nextNode with false result which calls this automatically
         readCursor.exitNode();
         readCursor.exitField();
         while (readCursor.nextNode()) {
@@ -570,7 +625,7 @@ function renderCell(
     workspace: Workspace,
     readCursor: ITreeSubscriptionCursor,
     row: number,
-    col: number,
+    col: number
 ) {
     const reactElem: any[] = [];
     const strvalue: string = readCursor.value! as string;
@@ -589,7 +644,7 @@ function renderCell(
             }}
         >
             {strvalue}
-        </td>,
+        </td>
     );
     return reactElem;
 }
@@ -604,14 +659,20 @@ function renderHorizontalPlusCell(workspace: Workspace, row: number) {
                 workspace.tree.runTransaction((_forest, editor) => {
                     for (let i = 0; i < colsNr; i++) {
                         const numvalue = readCellValue(workspace, row, i);
-                        setCellValueDelAddInTx(workspace, row, i, numvalue + 1, editor);
+                        setCellValueDelAddInTx(
+                            workspace,
+                            row,
+                            i,
+                            numvalue + 1,
+                            editor
+                        );
                     }
                     return TransactionResult.Apply;
                 });
             }}
         >
             {"+"}
-        </td>,
+        </td>
     );
     return reactElem;
 }
@@ -633,14 +694,20 @@ function renderVerticalPlusCells(workspace: Workspace) {
                     workspace.tree.runTransaction((_forest, editor) => {
                         for (let i = 0; i < rowsNr; i++) {
                             const numvalue = readCellValue(workspace, i, col);
-                            setCellValueDelAddInTx(workspace, i, col, numvalue + 1, editor);
+                            setCellValueDelAddInTx(
+                                workspace,
+                                i,
+                                col,
+                                numvalue + 1,
+                                editor
+                            );
                         }
                         return TransactionResult.Apply;
                     });
                 }}
             >
                 {"+"}
-            </td>,
+            </td>
         );
     }
     reactElem.push(renderAllPlusCell(workspace));
@@ -659,7 +726,13 @@ function renderAllPlusCell(workspace: Workspace) {
                     for (let i = 0; i < rowsNr; i++) {
                         for (let j = 0; j < colsNr; j++) {
                             const numvalue = readCellValue(workspace, i, j);
-                            setCellValueDelAddInTx(workspace, i, j, numvalue + 1, editor);
+                            setCellValueDelAddInTx(
+                                workspace,
+                                i,
+                                j,
+                                numvalue + 1,
+                                editor
+                            );
                         }
                     }
                     return TransactionResult.Apply;
@@ -667,7 +740,7 @@ function renderAllPlusCell(workspace: Workspace) {
             }}
         >
             {"+"}
-        </td>,
+        </td>
     );
     return reactElem;
 }

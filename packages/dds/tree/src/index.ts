@@ -73,6 +73,14 @@ export {
     TaggedChange,
     RepairDataStore,
     ReadonlyRepairDataStore,
+    checkRootSymbol,
+    checkSymbol,
+    michaelo,
+    misoSymbol,
+    rootFieldKeySymbol,
+    fieldSchema,
+    namedTreeSchema,
+    moveToDetachedField,
 } from "./core";
 
 export {
@@ -158,6 +166,9 @@ export {
     OptionalFieldEditBuilder,
     SequenceFieldEditBuilder,
     SequenceField,
+    FieldKinds,
+    DefaultChangeFamily,
+    singleTextCursor,
 } from "./feature-libraries";
 
 export { ISharedTree, SharedTreeFactory, SharedTree } from "./shared-tree";

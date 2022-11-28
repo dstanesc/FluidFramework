@@ -26,6 +26,9 @@ import {
     AnchorSet,
     UpPath,
     EditManager,
+    rootFieldKeySymbol,
+    misoSymbol,
+    michaelo,
 } from "../core";
 import {
     defaultSchemaPolicy,
@@ -41,10 +44,7 @@ import {
     getEditableTreeContext,
     SchemaEditor,
     DefaultChangeset,
-    anchorSymbol,
-    isUnwrappedNode,
     proxyTargetSymbol,
-    getTypeSymbol,
     valueSymbol,
     EditManagerIndex,
     runSynchronousTransaction,
@@ -95,6 +95,12 @@ export interface ISharedTree extends ICheckout<IDefaultEditBuilder>, ISharedObje
      * Something should ensure the document contents are always in schema.
      */
     readonly storedSchema: StoredSchemaRepository;
+
+    getRootFieldKeySymbol(): any;
+
+    getMisoSymbol(): any;
+
+    getMichaelo(): any;
 }
 
 /**
@@ -194,26 +200,25 @@ export class SharedTree
         return new SharedTreeFactory();
     }
 
-    public rootAnchor() {
-        if (isUnwrappedNode(this.root)) {
-            return this.root[anchorSymbol];
-        }
-    }
-
     public getProxyTargetSymbol() {
         return proxyTargetSymbol;
-    }
-
-    public getGetTypeSymbol() {
-        return getTypeSymbol;
     }
 
     public getValueSymbol() {
         return valueSymbol;
     }
 
-    public getAnchorSymbol() {
-        return anchorSymbol;
+    public getRootFieldKeySymbol() {
+        return rootFieldKeySymbol;
+    }
+
+    public getMisoSymbol() {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return misoSymbol;
+    }
+
+    public getMichaelo() {
+        return michaelo;
     }
 }
 

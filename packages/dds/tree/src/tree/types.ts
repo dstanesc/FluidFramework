@@ -46,6 +46,22 @@ export const EmptyKey: LocalFieldKey = brand("");
 export const rootFieldKey: GlobalFieldKey = brand("rootFieldKey");
 export const rootFieldKeySymbol: GlobalFieldKeySymbol = symbolFromKey(rootFieldKey);
 export const rootField = keyAsDetachedField(rootFieldKeySymbol);
+export const misoSymbol = Symbol("miso");
+export function checkSymbol(sym: any) {
+    return sym === misoSymbol;
+}
+export const michaelo = createMichaelo();
+
+function createMichaelo() {
+    console.trace();
+    return {
+        num: 2000000000 * Math.random(),
+    };
+}
+
+export function checkRootSymbol(sym: any) {
+    return sym === rootFieldKeySymbol;
+}
 
 /**
  * Location of a tree relative to is parent container (which can be a tree or forest).
@@ -113,6 +129,14 @@ export function keyAsDetachedField(key: FieldKey): DetachedField {
         );
         return brand(key);
     }
+    console.log("key");
+    console.log(key);
+    console.log("rootFieldKeySymbol");
+    console.log(rootFieldKeySymbol);
+    // eslint-disable-next-line eqeqeq
+    console.log(key == rootFieldKeySymbol);
+    console.log(key === rootFieldKeySymbol);
+
     assert(
         key === rootFieldKeySymbol,
         0x3bf /* Root is only allowed global field key as detached field */,
