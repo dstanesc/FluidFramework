@@ -3,6 +3,7 @@
  * Licensed under the MIT License.
  */
 
+import { Delta } from "../core";
 import { MakeNominal } from "../util";
 
 /**
@@ -61,7 +62,7 @@ export interface Dependent extends NamedComputation {
      * If reducing invalidation based on the token,
      * there will be a token specific invalidation protocol that must be obeyed.
      */
-    markInvalid(token?: InvalidationToken): void;
+    markInvalid(token?: InvalidationToken, delta?: Delta.Root): void;
 }
 
 /**

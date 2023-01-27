@@ -123,7 +123,9 @@ export interface EditableTreeContext {
      * either this context or any other context or client using this document,
      * is committed successfully.
      */
-    attachAfterChangeHandler(afterChangeHandler: (context: EditableTreeContext) => void): void;
+    attachAfterChangeHandler(
+        afterChangeHandler: (context: EditableTreeContext, delta: Delta.Root|undefined) => void,
+    ): void;
 
     openTransaction(): void;
     commitTransaction(): void;
@@ -206,8 +208,9 @@ abstract class TransactionHandler {
             );
             const changeFamily = this.transactionCheckout.changeFamily;
             this._editor = changeFamily.buildEditor((edit) => {
-                this.forest.applyDelta(changeFamily.intoDelta(edit));
-                this.handleAfterChange();
+                const delta = changeFamily.intoDelta(edit);
+                this.forest.applyDelta(delta);
+                this.handleAfterChange(delta);
             }, this.forest.anchors);
         }
         return this._editor;
@@ -218,7 +221,7 @@ abstract class TransactionHandler {
         return result === TransactionResult.Apply;
     }
 
-    public abstract handleAfterChange(): void;
+    public abstract handleAfterChange(delta: Delta.Root | undefined): void;
 
     private runSynchronousTransaction(command: Command): boolean {
         assert(
@@ -301,7 +304,9 @@ export class ProxyContext extends TransactionHandler implements EditableTreeCont
     public readonly withCursors: Set<ProxyTarget<Anchor | FieldAnchor>> = new Set();
     public readonly withAnchors: Set<ProxyTarget<Anchor | FieldAnchor>> = new Set();
     private readonly observer: Dependent;
-    private readonly afterChangeHandlers: Set<(context: EditableTreeContext) => void> = new Set();
+    private readonly afterChangeHandlers: Set<
+        (context: EditableTreeContext, delta: Delta.Root | undefined) => void
+    > = new Set();
 
     /**
      * @param forest - the Forest
@@ -315,7 +320,7 @@ export class ProxyContext extends TransactionHandler implements EditableTreeCont
         this.observer = new SimpleObservingDependent(
             (token?: InvalidationToken, delta?: Delta.Root): void => {
                 if (token === afterChangeToken) {
-                    this.handleAfterChange();
+                    this.handleAfterChange(delta);
                 } else {
                     this.prepareForEdit();
                 }
@@ -393,14 +398,14 @@ export class ProxyContext extends TransactionHandler implements EditableTreeCont
     }
 
     public attachAfterChangeHandler(
-        afterChangeHandler: (context: EditableTreeContext) => void,
+        afterChangeHandler: (context: EditableTreeContext, delta: Delta.Root|undefined) => void,
     ): void {
         this.afterChangeHandlers.add(afterChangeHandler);
     }
 
-    public handleAfterChange(): void {
+    public handleAfterChange(delta: Delta.Root | undefined): void {
         for (const afterChangeHandler of this.afterChangeHandlers) {
-            afterChangeHandler(this);
+            afterChangeHandler(this, delta);
         }
     }
 

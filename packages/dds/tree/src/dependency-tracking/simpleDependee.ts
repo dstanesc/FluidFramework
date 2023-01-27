@@ -3,6 +3,7 @@
  * Licensed under the MIT License.
  */
 
+import { Delta } from "../core";
 import { Dependee, Dependent, InvalidationToken } from "./dependencies";
 
 /**
@@ -30,9 +31,9 @@ export class SimpleDependee implements Dependee {
     /**
      * Invalidates the dependents that have are dependent on this data.
      */
-    public invalidateDependents(token?: InvalidationToken): void {
+    public invalidateDependents(token?: InvalidationToken, delta?: Delta.Root): void {
         for (const dependent of this.dependents) {
-            dependent.markInvalid(token);
+            dependent.markInvalid(token, delta);
         }
     }
 

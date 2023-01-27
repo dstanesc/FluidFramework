@@ -77,7 +77,7 @@ export class ForestIndex implements Index<unknown>, SummaryElement {
     newLocalState(changeDelta: Delta.Root): void {
         this.forest.applyDelta(changeDelta);
         // TODO: remove this workaround as soon as notification/eventing will be supported.
-        afterChangeForest(this.forest);
+        afterChangeForest(this.forest, changeDelta);
     }
 
     /**

@@ -204,7 +204,7 @@ export interface Dependee extends NamedComputation {
 
 // @public
 export interface Dependent extends NamedComputation {
-    markInvalid(token?: InvalidationToken): void;
+    markInvalid(token?: InvalidationToken, delta?: Delta.Root): void;
 }
 
 // @public (undocumented)
@@ -1279,7 +1279,7 @@ export class SimpleDependee implements Dependee {
     constructor(computationName?: string);
     // (undocumented)
     readonly computationName: string;
-    invalidateDependents(token?: InvalidationToken): void;
+    invalidateDependents(token?: InvalidationToken, delta?: Delta.Root): void;
     // @sealed (undocumented)
     listDependents(): Set<Dependent>;
     // (undocumented)

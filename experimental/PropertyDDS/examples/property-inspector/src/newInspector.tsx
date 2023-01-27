@@ -26,13 +26,14 @@ import {
     brand,
     getPrimaryField,
     FieldKey,
-    ValueSchema,    
+    ValueSchema,
     ContextuallyTypedNodeDataObject,
     isWritableArrayLike,
     PrimitiveValue,
     ISharedTree,
     rootFieldKey,
     symbolFromKey,
+    Delta,
 } from "@fluid-internal/tree";
 import {
     IDataCreationOptions,
@@ -56,6 +57,8 @@ import AutoSizer from "react-virtualized-auto-sizer";
 
 import { theme } from "./theme";
 import { defaultPrimitiveValues, getPerson } from "./demoPersonData";
+import { convertDeltaToCSet } from "./convertDeltaToChangeSet";
+import { ProxyBinder } from "./proxyBinder";
 
 const useStyles = makeStyles(
     {
@@ -395,12 +398,53 @@ export const InspectorApp = (props: any) => {
     );
 };
 
+
 export function renderApp(data: ISharedTree, element: HTMLElement) {
     const { context } = data;
+
+    const binder = new ProxyBinder();
+
     const render = () => {
         context.clear();
         ReactDOM.render(<InspectorApp data={context} />, element);
     };
+
+    const dumpChangeSets = (changeContext: EditableTreeContext, delta: Delta.Root | undefined) => {
+        if (delta) {
+            const CSet = convertDeltaToCSet(delta, changeContext);
+            console.log(CSet);
+        }
+    };
+
+    binder.attachToProxy(data);
+
+    (window as any).BINDER = binder;
+
     context.attachAfterChangeHandler(render);
+    context.attachAfterChangeHandler(dumpChangeSets);
     render();
 }
+
+
+/* export class AddressBinding extends DataBinding {
+    constructor(params: any) {
+        super(params);
+    }
+
+    zipChanged() {
+        console.log('Zip changed');
+    }
+
+    static initialize() {
+        this.registerOnPath("zip", ["modify"], AddressBinding.prototype.zipChanged);
+    }
+}
+
+AddressBinding.initialize(); */
+
+    /* binder.defineRepresentation("view", "Test:Address-1.0.0", (property) => {
+        console.log('Representation created');
+        return {};
+    });
+
+    binder.register("view", "Test:Address-1.0.0", AddressBinding); */

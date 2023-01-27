@@ -91,6 +91,11 @@ async function start(): Promise<void> {
     // }
 
     renderApp(sharedTree, document.getElementById("root")!);
+
+    // Debugging code
+    (window as any).person = sharedTree.root;
+    (window as any).sharedTree = sharedTree;
+    (window as any).context = sharedTree.context;
 }
 
 start().catch((error) => console.error(error));

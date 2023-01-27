@@ -204,8 +204,8 @@ class ObjectForest extends SimpleDependee implements IEditableForest {
     }
 
     // TODO: remove this workaround as soon as notification/eventing will be supported.
-    afterChange(): void {
-        this.invalidateDependents(afterChangeToken);
+    afterChange(delta: Delta.Root | undefined): void {
+        this.invalidateDependents(afterChangeToken, delta);
     }
 
     tryMoveCursorToNode(
@@ -471,6 +471,6 @@ export function buildForest(schema: StoredSchemaRepository, anchors?: AnchorSet)
 
 // This must be used only in forestIndex and should never be exported elsewhere.
 // TODO: remove this workaround as soon as notification/eventing will be supported.
-export function afterChangeForest(forest: IEditableForest): void {
-    (forest as ObjectForest).afterChange();
+export function afterChangeForest(forest: IEditableForest, delta: Delta.Root | undefined): void {
+    (forest as ObjectForest).afterChange(delta);
 }
