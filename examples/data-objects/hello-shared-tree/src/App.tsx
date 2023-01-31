@@ -30,7 +30,7 @@ import {
     EditableTree,
     Brand,
 } from "@fluid-internal/tree";
-import { fieldSchema } from "@fluid-internal/tree/dist/core";
+import { fieldSchema, JsonableTree } from "@fluid-internal/tree/dist/core";
 import { FieldKinds, namedTreeSchema, singleTextCursor } from "@fluid-internal/tree/dist/feature-libraries";
 
 import React, { useState, useEffect } from "react";
@@ -144,7 +144,7 @@ export default function App() {
     );
 }
 
-function diceData() {
+function diceData(): JsonableTree {
     const dices: any[] = [];
     for (let i = 0; i < 10; i++) {
         const newValue = Math.floor(Math.random() * 1024) + 1;
@@ -162,7 +162,7 @@ function diceData() {
 }
 
 function insertDiceValues(workspace: Workspace) {
-    const data = diceData();
+    const data: JsonableTree = diceData();
     const tree = workspace.tree;
     const wrappedRoot = tree.context.root;
     wrappedRoot.insertNodes(
@@ -173,7 +173,7 @@ function insertDiceValues(workspace: Workspace) {
 
 function updateDiceValues(workspace: Workspace) {
     const data = diceData();
-    const rawData = data.fields.valueKeys.map((value: any) => value.value);
+    const rawData = data.fields!.valueKeys.map((value: any) => value.value);
     const tree = workspace.tree;
     const unwrappedRoot = tree.context.unwrappedRoot;
     if (unwrappedRoot !== undefined) {
