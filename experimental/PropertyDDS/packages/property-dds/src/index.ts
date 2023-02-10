@@ -22,3 +22,4 @@ export {
 	LZ4PropertyTreeFactory,
 } from "./propertyTreeExtFactories";
 export { PropertyTreeFactory } from "./propertyTreeFactory";
+export { convertSchemaToSharedTreeLls } from "./sharedtree/";

@@ -22,6 +22,7 @@ import { ValueArrayProperty } from "./properties/valueArrayProperty";
 import { ValueMapProperty } from "./properties/valueMapProperty";
 import { ValueProperty } from "./properties/valueProperty";
 import { enableValidations } from "./enableValidations";
+import { PropertyTemplate } from "./propertyTemplate";
 
 export {
 	PropertyFactory,
@@ -44,4 +45,5 @@ export {
 	ValueMapProperty,
 	ValueProperty,
 	enableValidations,
+	PropertyTemplate,
 };
