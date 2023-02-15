@@ -67,6 +67,43 @@ function isIgnoreNestedProperties(typeid: string): boolean {
 	return typeid === "Enum";
 }
 
+function loadInheritedChildren(): Map<string, Set<string>> {
+	const inheritedChildren: Map<string, Set<string>> = new Map();
+	const allTypes = PropertyFactory.listRegisteredTypes();
+	for (const typeid of allTypes) {
+		const parents = PropertyFactory.getAllParentsForTemplate(typeid);
+		for (const parent of parents) {
+			if (!inheritedChildren.has(parent)) {
+				inheritedChildren.set(parent, new Set());
+			}
+			inheritedChildren.get(parent)?.add(typeid);
+		}
+	}
+	return inheritedChildren;
+}
+
+function getInheritedChildrenForType(
+	inheritedChildrenByType: Map<string, Set<string>>,
+	typeid: string,
+): Set<TreeSchemaIdentifier> {
+	return getInheritedChildrenForTypes(inheritedChildrenByType, new Set([typeid]));
+}
+
+function getInheritedChildrenForTypes(
+	inheritedChildrenByType: Map<string, Set<string>>,
+	types: Set<string>,
+): Set<TreeSchemaIdentifier> {
+	const result = new Set<TreeSchemaIdentifier>();
+	for (const type of types) {
+		result.add(brand(type));
+		const strSet = inheritedChildrenByType.get(type) ?? new Set();
+		for (const str of strSet) {
+			result.add(brand(str));
+		}
+	}
+	return result;
+}
+
 export function convertSchemaToSharedTreeLls(
 	policy: FullSchemaPolicy,
 	rootFieldSchema: FieldSchema,
@@ -78,6 +115,7 @@ export function convertSchemaToSharedTreeLls(
 	// Extract all referenced typeids for the schema
 	const unprocessedTypeIds: string[] = [...rootTypes];
 	const referencedTypeIDs = new Map<TreeSchemaIdentifier, Context>();
+	const inheritedChildrenByType = loadInheritedChildren();
 
 	while (unprocessedTypeIds.length > 0) {
 		const unprocessedTypeID = unprocessedTypeIds.pop() ?? fail("fail");
@@ -229,19 +267,33 @@ export function convertSchemaToSharedTreeLls(
 								}
 								const fieldKey: LocalFieldKey = brand(property.id);
 								if (!localFields.has(fieldKey)) {
+									const types = getInheritedChildrenForType(
+										inheritedChildrenByType,
+										currentTypeid,
+									);
 									localFields.set(fieldKey, {
 										kind: property.optional
 											? OptionalFieldKind
 											: ValueFieldKind,
-										types: new Set([currentTypeid]),
+										types,
 									});
 								} else {
-									const types = localFields.get(fieldKey)?.types ?? fail("never");
+									const baseTypes = new Set(
+										localFields.get(fieldKey)?.types ?? fail("never"),
+									);
+									const types = getInheritedChildrenForTypes(
+										inheritedChildrenByType,
+										baseTypes,
+									);
+									const currentTypes = getInheritedChildrenForType(
+										inheritedChildrenByType,
+										currentTypeid,
+									);
 									localFields.set(fieldKey, {
 										kind: property.optional
 											? OptionalFieldKind
 											: ValueFieldKind,
-										types: new Set([...types, currentTypeid]),
+										types: new Set([...types, ...currentTypes]),
 									});
 								}
 							}
@@ -266,9 +318,11 @@ export function convertSchemaToSharedTreeLls(
 			const kind: FieldKindIdentifier =
 				context.context === "array" ? SequenceFieldKind : OptionalFieldKind;
 
+			const baseTypes = context.types ?? new Set([context.typeid]);
+			const types = getInheritedChildrenForTypes(inheritedChildrenByType, baseTypes);
 			const fieldType = {
 				kind,
-				types: context.types ?? new Set([context.typeid]),
+				types,
 			};
 			switch (context.context) {
 				case "map":

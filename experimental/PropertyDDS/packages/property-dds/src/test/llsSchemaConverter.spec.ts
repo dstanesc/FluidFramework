@@ -8,7 +8,6 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 /* eslint-disable import/no-internal-modules */
 
-
 import { PropertyFactory } from "@fluid-experimental/property-properties";
 import { defaultSchemaPolicy, FieldSchema, SchemaData, ValueSchema } from "@fluid-internal/tree";
 import { brand } from "@fluid-internal/tree/dist/util/brand";
@@ -125,7 +124,7 @@ function checkMissingRefs(schemaData) {
 			if (field.types) {
 				field.types.forEach((type) => {
 					if (!schemaTypesSet.has(type.toString())) {
-						expect.fail(`Missing type ${type.toString()} in schema`);
+						expect.fail(`Missing type ${type.toString()} in schema at the type ${key} field ${field.name}`);
 					}
 				});
 			}
@@ -135,16 +134,17 @@ function checkMissingRefs(schemaData) {
 
 function checkInheritanceTranslation(schemaData) {
 	const schemaMap = schemaData.treeSchema;
-	const table = schemaMap.get("Test:Table-1.0.0");
-	expect(table).to.not.be.undefined;
-	expect(table?.localFields).to.not.be.undefined;
-	const rows = table?.localFields.get("rows");
-	expect(rows).to.not.be.undefined;
-	expect(rows?.types).to.not.be.undefined;
+	const row = schemaMap.get("array<Test:Row-1.0.0>");
+	expect(row).to.not.be.undefined;
+	expect(row?.localFields).to.not.be.undefined;
+	const field = row?.localFields.get("");
+	expect(field).to.not.be.undefined;
+	expect(field?.types).to.not.be.undefined;
 	// expect.fail(" : " + Array.from(rows?.types) + " : " + Array.from(rows?.types).length);
-	expect(rows?.types?.has("array<Test:Row-1.0.0>")).to.be.true;
-	expect(rows?.types?.has("array<Test:ExtendedRow-1.0.0>")).to.be.true;
-	expect(rows?.types?.has("array<Test:OtherExtendedRow-1.0.0>")).to.be.true;
+    const types = field?.types;
+	expect(types?.has("Test:Row-1.0.0")).to.be.true;
+	expect(types?.has("Test:ExtendedRow-1.0.0")).to.be.true;
+	expect(types?.has("Test:OtherExtendedRow-1.0.0")).to.be.true;
 
 	//	expect.fail(mapToObject(schemaMap));
 }
@@ -170,7 +170,7 @@ function checkTable(schemaData, table) {
 	expect(table).to.not.be.undefined;
 	expect(table?.localFields).to.not.be.undefined;
 	const extendedRows = table?.localFields.get("extendedRows");
-    checkExtendedRows(schemaData, extendedRows);
+	checkExtendedRows(schemaData, extendedRows);
 }
 
 function checkExtendedRows(schemaData, extendedRows) {
@@ -186,23 +186,14 @@ function checkInfo(schemaData, info) {
 	expect(info?.types).to.not.be.undefined;
 	expect(info?.types?.has("map<Test:RowInfo-1.0.0>")).to.be.true;
 	const infoType = schemaData.treeSchema.get("Test:RowInfo-1.0.0");
-    expect(infoType).to.not.be.undefined;
-    expect(infoType?.localFields).to.not.be.undefined;
-    const uint64 = schemaData.treeSchema.get("Test:RowInfo-1.0.0");
-    checkUint64(schemaData, uint64);
+	expect(infoType).to.not.be.undefined;
+	expect(infoType?.localFields).to.not.be.undefined;
+	const uint64 = schemaData.treeSchema.get("Test:RowInfo-1.0.0");
+	checkUint64(schemaData, uint64);
 }
 
 function checkUint64(schemaData, uint64) {
-    expect(uint64).to.not.be.undefined;
-    const uint64Type = schemaData.treeSchema.get("Uint64");
-    expect(uint64Type.value === ValueSchema.Number).to.be.true;
-
+	expect(uint64).to.not.be.undefined;
+	const uint64Type = schemaData.treeSchema.get("Uint64");
+	expect(uint64Type.value === ValueSchema.Number).to.be.true;
 }
-
-
-
-
-
-
-
-
