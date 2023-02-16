@@ -109,12 +109,10 @@ function register() {
 		],
 	});
 
-    PropertyFactory.register({
+	PropertyFactory.register({
 		typeid: "Test:DescribedTable-1.0.0",
-        inherits: ["Test:Table-1.0.0"],
-		properties: [
-			{ id: "description", typeid: "String"  },
-        ]
+		inherits: ["Test:Table-1.0.0"],
+		properties: [{ id: "description", typeid: "String" }],
 	});
 }
 
@@ -132,7 +130,11 @@ function checkMissingRefs(schemaData) {
 			if (field.types) {
 				field.types.forEach((type) => {
 					if (!schemaTypesSet.has(type.toString())) {
-						expect.fail(`Missing type ${type.toString()} in schema at the type ${key} field ${field.name}`);
+						expect.fail(
+							`Missing type ${type.toString()} in schema at the type ${key} field ${
+								field.name
+							}`,
+						);
 					}
 				});
 			}
@@ -149,7 +151,7 @@ function checkInheritanceTranslation(schemaData) {
 	expect(field).to.not.be.undefined;
 	expect(field?.types).to.not.be.undefined;
 	// expect.fail(" : " + Array.from(rows?.types) + " : " + Array.from(rows?.types).length);
-    const types = field?.types;
+	const types = field?.types;
 	expect(types?.has("Test:Row-1.0.0")).to.be.true;
 	expect(types?.has("Test:ExtendedRow-1.0.0")).to.be.true;
 	expect(types?.has("Test:OtherExtendedRow-1.0.0")).to.be.true;

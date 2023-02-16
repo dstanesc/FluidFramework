@@ -22,6 +22,8 @@ import {
 	TreeSchemaIdentifier,
 	ValueSchema,
 	FullSchemaPolicy,
+	TreeTypeSet,
+	TreeType,
 } from "@fluid-internal/tree";
 import { PropertyFactory, PropertyTemplate } from "@fluid-experimental/property-properties";
 import { TypeIdHelper } from "@fluid-experimental/property-changeset";
@@ -111,14 +113,13 @@ export function convertSchemaToSharedTreeLls(
 	const [ValueFieldKind, OptionalFieldKind, SequenceFieldKind] = policy.fieldKinds.keys();
 	const treeSchema = new Map();
 	const inheritedChildrenByType = loadInheritedChildren();
-    const rootBaseTypes= rootFieldSchema.types ?? fail("Expected root types");
-    const rootTypes = getInheritedChildrenForTypes(inheritedChildrenByType, rootBaseTypes);
+	const rootBaseTypes = rootFieldSchema.types ?? fail("Expected root types");
+	const rootTypes = getInheritedChildrenForTypes(inheritedChildrenByType, rootBaseTypes);
 
 	// Extract all referenced typeids for the schema
 	const unprocessedTypeIds: string[] = [...rootTypes];
-    const unprocessedTypeIdsSet: Set<string> = new Set(unprocessedTypeIds);
+	const unprocessedTypeIdsSet: Set<string> = new Set(unprocessedTypeIds);
 	const referencedTypeIDs = new Map<TreeSchemaIdentifier, Context>();
-
 
 	while (unprocessedTypeIds.length > 0) {
 		const unprocessedTypeID = unprocessedTypeIds.pop() ?? fail("fail");
@@ -141,7 +142,7 @@ export function convertSchemaToSharedTreeLls(
 			idsSet.forEach((id) => {
 				if (!referencedTypeIDs.has(dependencyTypeId) && !unprocessedTypeIdsSet.has(id)) {
 					unprocessedTypeIds.push(id);
-                    unprocessedTypeIdsSet.add(id);
+					unprocessedTypeIdsSet.add(id);
 				}
 			});
 		}
@@ -361,9 +362,30 @@ export function convertSchemaToSharedTreeLls(
 	}
 	const fullSchemaData: SchemaData = {
 		treeSchema,
-		globalFieldSchema: new Map([[rootFieldKey, rootFieldSchema]]),
+		globalFieldSchema: new Map([
+			[rootFieldKey, convertRootFieldSchema(inheritedChildrenByType, rootFieldSchema)],
+		]),
 	};
 	return fullSchemaData;
+}
+
+function convertRootFieldSchema(
+	inheritedChildrenByType,
+	rootFieldSchema: FieldSchema,
+): FieldSchema {
+	const types: Set<TreeType> = new Set();
+	const fieldSchema: FieldSchema = {
+		kind: rootFieldSchema.kind,
+		types,
+	};
+	const origTypes: TreeTypeSet = rootFieldSchema.types ?? new Set();
+	if (fieldSchema.types) {
+		for (const type of origTypes) {
+			const children = getInheritedChildrenForType(inheritedChildrenByType, type);
+			children.forEach((child) => types.add(brand(child)));
+		}
+	}
+	return fieldSchema;
 }
 
 // Concepts currently not mapped / represented in the compiled schema:
