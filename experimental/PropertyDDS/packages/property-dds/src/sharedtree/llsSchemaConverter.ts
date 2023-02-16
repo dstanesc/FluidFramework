@@ -83,16 +83,16 @@ function loadInheritedChildren(): Map<string, Set<string>> {
 }
 
 function getInheritedChildrenForType(
-	inheritedChildrenByType: Map<string, Set<string>>,
+	inheritedChildrenByType: Map<string, ReadonlySet<string>>,
 	typeid: string,
-): Set<TreeSchemaIdentifier> {
+): ReadonlySet<TreeSchemaIdentifier> {
 	return getInheritedChildrenForTypes(inheritedChildrenByType, new Set([typeid]));
 }
 
 function getInheritedChildrenForTypes(
-	inheritedChildrenByType: Map<string, Set<string>>,
-	types: Set<string>,
-): Set<TreeSchemaIdentifier> {
+	inheritedChildrenByType: Map<string, ReadonlySet<string>>,
+	types: ReadonlySet<string>,
+): ReadonlySet<TreeSchemaIdentifier> {
 	const result = new Set<TreeSchemaIdentifier>();
 	for (const type of types) {
 		result.add(brand(type));
@@ -110,12 +110,15 @@ export function convertSchemaToSharedTreeLls(
 ): SchemaData {
 	const [ValueFieldKind, OptionalFieldKind, SequenceFieldKind] = policy.fieldKinds.keys();
 	const treeSchema = new Map();
-	const rootTypes = rootFieldSchema.types ?? fail("Expected root types");
+	const inheritedChildrenByType = loadInheritedChildren();
+    const rootBaseTypes= rootFieldSchema.types ?? fail("Expected root types");
+    const rootTypes = getInheritedChildrenForTypes(inheritedChildrenByType, rootBaseTypes);
 
 	// Extract all referenced typeids for the schema
 	const unprocessedTypeIds: string[] = [...rootTypes];
+    const unprocessedTypeIdsSet: Set<string> = new Set(unprocessedTypeIds);
 	const referencedTypeIDs = new Map<TreeSchemaIdentifier, Context>();
-	const inheritedChildrenByType = loadInheritedChildren();
+
 
 	while (unprocessedTypeIds.length > 0) {
 		const unprocessedTypeID = unprocessedTypeIds.pop() ?? fail("fail");
@@ -134,9 +137,13 @@ export function convertSchemaToSharedTreeLls(
 			schemaTemplate,
 		) as TreeSchemaIdentifier[];
 		for (const dependencyTypeId of dependencies) {
-			if (!referencedTypeIDs.has(dependencyTypeId)) {
-				unprocessedTypeIds.push(dependencyTypeId);
-			}
+			const idsSet = getInheritedChildrenForType(inheritedChildrenByType, dependencyTypeId);
+			idsSet.forEach((id) => {
+				if (!referencedTypeIDs.has(dependencyTypeId) && !unprocessedTypeIdsSet.has(id)) {
+					unprocessedTypeIds.push(id);
+                    unprocessedTypeIdsSet.add(id);
+				}
+			});
 		}
 
 		// Extract context information (i.e. array, map and set types)

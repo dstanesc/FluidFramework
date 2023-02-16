@@ -108,6 +108,14 @@ function register() {
 			},
 		],
 	});
+
+    PropertyFactory.register({
+		typeid: "Test:DescribedTable-1.0.0",
+        inherits: ["Test:Table-1.0.0"],
+		properties: [
+			{ id: "description", typeid: "String"  },
+        ]
+	});
 }
 
 function checkMissingRefs(schemaData) {
