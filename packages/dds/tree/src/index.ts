@@ -227,11 +227,11 @@ export {
 
 export {
 	ISharedTree,
-	ISharedTreeBranch,
+	ISharedTreeView,
 	ISharedTreeFork,
 	runSynchronous,
 	SharedTreeFactory,
-	BranchEvents,
+	ViewEvents,
 } from "./shared-tree";
 
 export { StableId, UuidString } from "./id-compressor";
