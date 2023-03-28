@@ -56,13 +56,6 @@ import {
 import { makeField, unwrappedField } from "./editableField";
 import { ProxyTarget } from "./ProxyTarget";
 
-	/**
-	 * Something in this tree is changing.
-	 * Called on every parent (transitively) when a change is occurring.
-	 * Includes changes to this node itself.
-	 */
-	subtreeChanging(): void;
-
 const editableTreeSlot = anchorSlot<EditableTree>();
 
 export function makeTree(context: ProxyContext, cursor: ITreeSubscriptionCursor): EditableTree {

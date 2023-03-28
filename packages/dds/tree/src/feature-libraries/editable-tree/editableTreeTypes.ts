@@ -87,6 +87,13 @@ export interface EditableTreeEvents {
 	 * Note that this is shallow: it does not include changes to the values of nodes it its fields for example.
 	 */
 	changing(): void;
+
+	/**
+	 * Something in this tree is changing.
+	 * Called on every parent (transitively) when a change is occurring.
+	 * Includes changes to this node itself.
+	 */
+	subtreeChanging(): void;
 }
 
 /**
