@@ -6,7 +6,6 @@
 import { strict as assert } from "assert";
 import { PropertyFactory } from "@fluid-experimental/property-properties";
 import {
-	createSchemaRepository,
 	ValueSchema,
 	brand,
 	EmptyKey,
@@ -95,12 +94,10 @@ describe("LlsSchemaConverter", () => {
 	beforeAll(registerPropertySchemas);
 
 	it("Enum", () => {
-		const schemaRepository = createSchemaRepository();
-		convertPropertyToSharedTreeStorageSchema(
-			schemaRepository,
+		const fullSchemaData = convertPropertyToSharedTreeStorageSchema(
 			fieldSchema(FieldKinds.optional, [tableTypeName]),
 		);
-		const table = lookupTreeSchema(schemaRepository, tableTypeName);
+		const table = lookupTreeSchema(fullSchemaData, tableTypeName);
 		assert(table !== undefined);
 		const encoding = table.localFields.get(brand("encoding"));
 		assert(encoding !== undefined);
@@ -109,14 +106,12 @@ describe("LlsSchemaConverter", () => {
 	});
 
 	it("Missing Refs", () => {
-		const schemaRepository = createSchemaRepository();
-		convertPropertyToSharedTreeStorageSchema(
-			schemaRepository,
+		const fullSchemaData = convertPropertyToSharedTreeStorageSchema(
 			fieldSchema(FieldKinds.optional, [tableTypeName]),
 		);
-		const typeNames = new Set(schemaRepository.treeSchema.keys());
+		const typeNames = new Set(fullSchemaData.treeSchema.keys());
 		for (const typeName of typeNames) {
-			const treeSchema = lookupTreeSchema(schemaRepository, typeName);
+			const treeSchema = lookupTreeSchema(fullSchemaData, typeName);
 			assert(treeSchema !== undefined);
 			treeSchema.localFields.forEach((field, fieldKey) => {
 				if (field.types) {
@@ -140,12 +135,10 @@ describe("LlsSchemaConverter", () => {
 	});
 
 	it("Check Structure", () => {
-		const schemaRepository = createSchemaRepository();
-		convertPropertyToSharedTreeStorageSchema(
-			schemaRepository,
+		const fullSchemaData = convertPropertyToSharedTreeStorageSchema(
 			fieldSchema(FieldKinds.optional, [tableTypeName]),
 		);
-		const table = lookupTreeSchema(schemaRepository, tableTypeName);
+		const table = lookupTreeSchema(fullSchemaData, tableTypeName);
 		assert(table !== undefined);
 		assert(table.localFields !== undefined);
 
@@ -155,7 +148,7 @@ describe("LlsSchemaConverter", () => {
 		assert(extendedRows.types.has(brand("array<Test:ExtendedRow-1.0.0>")));
 
 		const extendedRowsSchema = lookupTreeSchema(
-			schemaRepository,
+			fullSchemaData,
 			brand("Test:ExtendedRow-1.0.0"),
 		);
 		assert(extendedRowsSchema !== undefined);
@@ -163,7 +156,7 @@ describe("LlsSchemaConverter", () => {
 		assert(info !== undefined);
 		assert(info.types !== undefined);
 		assert(info.types.has(brand("map<Test:RowInfo-1.0.0>")));
-		const infoType = lookupTreeSchema(schemaRepository, brand("Test:RowInfo-1.0.0"));
+		const infoType = lookupTreeSchema(fullSchemaData, brand("Test:RowInfo-1.0.0"));
 		assert(infoType !== undefined);
 
 		const uint64 = infoType.localFields.get(brand("value"));
@@ -171,17 +164,15 @@ describe("LlsSchemaConverter", () => {
 		assert(uint64.types !== undefined);
 		expect(uint64.types.has(brand("Uint64"))).toBeTruthy();
 		assert(uint64.types.has(brand("Uint64")));
-		const uint64Type = lookupTreeSchema(schemaRepository, brand("Uint64"));
+		const uint64Type = lookupTreeSchema(fullSchemaData, brand("Uint64"));
 		assert(uint64Type.value === ValueSchema.Number);
 	});
 
 	it("Inheritance Translation", () => {
-		const schemaRepository = createSchemaRepository();
-		convertPropertyToSharedTreeStorageSchema(
-			schemaRepository,
+		const fullSchemaData = convertPropertyToSharedTreeStorageSchema(
 			fieldSchema(FieldKinds.optional, [tableTypeName]),
 		);
-		const row = lookupTreeSchema(schemaRepository, brand("array<Test:Row-1.0.0>"));
+		const row = lookupTreeSchema(fullSchemaData, brand("array<Test:Row-1.0.0>"));
 		assert(row !== undefined);
 		assert(row.localFields !== undefined);
 		const field = row.localFields.get(EmptyKey);
