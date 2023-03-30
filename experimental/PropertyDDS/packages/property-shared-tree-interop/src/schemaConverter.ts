@@ -378,6 +378,8 @@ function enhanceRootFieldSchemaWithChildren(
 	return enhancedRootFieldSchema;
 }
 
+const allowedCollectionContexts = new Set(["array", "map", "set"]);
+
 /**
  * A helper function to add a complex type to the schema.
  *
@@ -392,23 +394,30 @@ export function addComplexTypeToSchema(
 	context: string,
 	typeName: TreeSchemaIdentifier,
 ): SchemaDataAndPolicy {
+	if (!allowedCollectionContexts.has(context)) {
+		fail(`Not supported collection context "${context}"`);
+	}
 	const treeSchema: Map<TreeSchemaIdentifier, TreeSchema> = new Map();
 	for (const [k, v] of fullSchemaData.treeSchema) {
 		treeSchema.set(k, v);
 	}
 	const complexTypeName: TreeSchemaIdentifier = brand(`${context}<${typeName}>`);
+	const types = new Set<TreeSchemaIdentifier>([
+		typeName,
+		...getChildrenForType(getAllInheritingChildrenTypes(), typeName),
+	]);
 	const typeSchema =
 		context === "array"
 			? namedTreeSchema({
 					name: complexTypeName,
 					localFields: {
-						[EmptyKey]: fieldSchema(FieldKinds.sequence, [typeName]),
+						[EmptyKey]: fieldSchema(FieldKinds.sequence, types),
 					},
 					extraLocalFields: emptyField,
 			  })
 			: namedTreeSchema({
 					name: complexTypeName,
-					extraLocalFields: fieldSchema(FieldKinds.optional, [typeName]),
+					extraLocalFields: fieldSchema(FieldKinds.optional, types),
 			  });
 	treeSchema.set(complexTypeName, typeSchema);
 	const globalSchema: SchemaDataAndPolicy = {
