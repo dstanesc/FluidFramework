@@ -59,7 +59,7 @@ import { SharedTreeCore } from "@fluid-internal/tree/dist/shared-tree-core";
 
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
-import { ChangeCategory, createCustomBinder, createPathBinder, createRootBinder } from "./binder";
+import { createAnchoredBinder } from "./binder";
 import { initializeWorkspace, Workspace } from "./workspace";
 
 const valueKeys: LocalFieldKey = brand("valueKeys");
@@ -127,7 +127,6 @@ export interface OperationAdapter {
     onBatch: () => void;
 }
 
-
 let countOnChange = 0;
 let countOnBatch = 0;
 export class DomainAdapterReact implements OperationAdapter {
@@ -141,7 +140,7 @@ export class DomainAdapterReact implements OperationAdapter {
         this.changed = true;
     }
     onBatch(): void {
-        console.log('Dispatch received', countOnBatch++);
+        console.log('onBatch received', countOnBatch++);
         if (this.changed) {
             this.transition(prevRows => readDrawValues(this.workspace));
         }
@@ -180,10 +179,7 @@ export default function App() {
             setDrawValues(readDrawValues(w));
             return w;
         }).then((w) => {
-            // registerRootBinder(w, setDrawValues);
-            // registerCustomBinder(w, setDrawValues);
-            registerPathBinder(w, setDrawValues);
-
+            registerRootBinder(w, setDrawValues);
         });
     }, []);
 
@@ -201,8 +197,6 @@ export default function App() {
 
     // const register = () => {
     //     // registerRootBinder(workspace!, setDrawValues);
-    //     // registerCustomBinder(workspace!, setDrawValues);
-    //     // registerPathBinder(workspace!, setDrawValues);
     // };
 
 
@@ -305,24 +299,12 @@ function insertDrawValues(workspace: Workspace) {
     tree.root = data;
 }
 
-function registerCustomBinder(workspace: Workspace, stateTransition: Transition<number[][]>) {
-    const binder = createCustomBinder(workspace.tree);
-    const reactAdapter = new DomainAdapterReact(stateTransition, workspace);
-    binder.bindOnChange(ChangeCategory.LOCAL, () => reactAdapter.onChange());
-    binder.bindOnBatch(() => reactAdapter.onBatch());
-}
-
-function registerPathBinder(workspace: Workspace, stateTransition: Transition<number[][]>) {
-    const binder = createPathBinder(workspace.tree, appSchema, 'drawKeys[2]');
-    const reactAdapter = new DomainAdapterReact(stateTransition, workspace);
-    binder.bindOnChange(ChangeCategory.LOCAL, () => reactAdapter.onChange());
-    binder.bindOnBatch(() => reactAdapter.onBatch());
-}
-
 function registerRootBinder(workspace: Workspace, stateTransition: Transition<number[][]>) {
-    const binder = createRootBinder(workspace.tree);
+    // const anchor = workspace.tree.context.root.getNode(0); // root
+    const anchor = workspace.tree.context.root.getNode(0)[getField](drawKeys).getNode(2); // specific node - 3rd row
+    const binder = createAnchoredBinder(workspace.tree, anchor, appSchema, ['drawKeys[2].valueKeys[4]']);
     const reactAdapter = new DomainAdapterReact(stateTransition, workspace);
-    binder.bindOnChange(ChangeCategory.SUBTREE, () => reactAdapter.onChange());
+    binder.bindOnChange(() => reactAdapter.onChange());
     binder.bindOnBatch(() => reactAdapter.onBatch());
 }
 

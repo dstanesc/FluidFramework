@@ -116,12 +116,14 @@ export interface AnchorEvents {
 	 * Called on every parent (transitively) when a change is occurring.
 	 * Includes changes to this node itself.
 	 */
-	subtreeChanging(anchor: AnchorNode): void;
+	subtreeChanging(anchor: AnchorNode, delta: any): void;
 
 	/**
 	 * Value on this node is changing.
 	 */
 	valueChanging(anchor: AnchorNode, value: Value): void;
+
+	change(anchor: AnchorNode): any;
 }
 
 /**
@@ -610,7 +612,7 @@ export class AnchorSet implements ISubscribable<AnchorSetRootEvents> {
 				assert(parentField !== undefined, 0x3ab /* Must be in a field to enter node */);
 				parent = { parent, parentField, parentIndex: index };
 				parentField = undefined;
-				maybeWithNode((p) => p.events.emit("subtreeChanging", p));
+				maybeWithNode((p) => p.events.emit("subtreeChanging", p, delta));
 			},
 			exitNode: (index: number): void => {
 				assert(parent !== undefined, 0x3ac /* Must have parent node */);
@@ -707,6 +709,8 @@ class PathNode extends ReferenceCountedBase implements UpPath<PathNode>, AnchorN
 
 	public readonly slots: BrandedMapSubset<AnchorSlot<any>> = new Map();
 
+	public readonly visitors: any = [];
+
 	/**
 	 * Construct a PathNode with refcount 1.
 	 * @param anchorSet - used to determine if this PathNode is already part of a specific anchorSet
@@ -732,8 +736,15 @@ class PathNode extends ReferenceCountedBase implements UpPath<PathNode>, AnchorN
 		super(1);
 	}
 
+	public addDeltaVisitor<K extends keyof AnchorEvents>(listener: AnchorEvents[K]): () => void {
+		this.visitors.push(listener);
+		return () => {};
+	}
+
 	public on<K extends keyof AnchorEvents>(eventName: K, listener: AnchorEvents[K]): () => void {
-		return this.events.on(eventName, listener);
+		return eventName === "change"
+			? this.addDeltaVisitor(listener)
+			: this.events.on(eventName, listener);
 	}
 
 	public child(key: FieldKey, index: number): UpPath<AnchorNode> {

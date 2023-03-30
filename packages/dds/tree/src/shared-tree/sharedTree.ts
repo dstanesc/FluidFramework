@@ -21,6 +21,7 @@ import {
 	AnchorNode,
 	IEditableForest,
 	AnchorSetRootEvents,
+	Delta,
 } from "../core";
 import { SharedTreeBranch, SharedTreeCore } from "../shared-tree-core";
 import {
@@ -57,7 +58,7 @@ export interface ViewEvents {
 	 * @remarks
 	 * This is mainly useful for knowing when to do followup work scheduled during events from Anchors.
 	 */
-	afterBatch(): void;
+	afterBatch(changeDelta: Delta.Root): void;
 }
 
 /**
@@ -244,7 +245,9 @@ class SharedTree
 					new ForestIndex(runtime, events, forest),
 					new EditManagerIndex(runtime, editManager),
 				] as const;
-				events.on("newLocalState", () => this.events.emit("afterBatch"));
+				events.on("newLocalState", (changeDelta) =>
+					this.events.emit("afterBatch", changeDelta),
+				);
 				return indexes;
 			},
 			defaultChangeFamily,
@@ -356,7 +359,7 @@ class SharedTreeFork implements ISharedTreeFork {
 		branch.on("onChange", (change) => {
 			const delta = this.changeFamily.intoDelta(change);
 			this.forest.applyDelta(delta);
-			this.events.emit("afterBatch");
+			this.events.emit("afterBatch", delta);
 		});
 	}
 

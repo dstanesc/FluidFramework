@@ -306,25 +306,42 @@ export class NodeProxyTarget extends ProxyTarget<Anchor> {
 		listener: EditableTreeEvents[K],
 	): () => void {
 		// assert(eventName === "changing", 0x5b3 /* unexpected eventName */);
-		if (eventName === "changing") {
-			const unsubscribeFromValueChange = this.anchorNode.on("valueChanging", () =>
-				listener(),
-			);
-			const unsubscribeFromChildrenChange = this.anchorNode.on("childrenChanging", () =>
-				listener(),
-			);
-			return () => {
-				unsubscribeFromValueChange();
-				unsubscribeFromChildrenChange();
-			};
-		} else if (eventName === "subtreeChanging") {
-			const unsubscribeFromValueSubtreeChange = this.anchorNode.on("subtreeChanging", () =>
-				listener(),
-			);
-			return () => {
-				unsubscribeFromValueSubtreeChange();
-			};
-		} else throw new Error("unexpected eventName");
+		const anchor: Anchor = this.getAnchor();
+		switch (eventName) {
+			case "changing": {
+				const unsubscribeFromValueChange = this.anchorNode.on(
+					"valueChanging",
+					(node: AnchorNode, value: Value) => listener(anchor, node, value),
+				);
+				const unsubscribeFromChildrenChange = this.anchorNode.on(
+					"childrenChanging",
+					(node: AnchorNode) => listener(anchor, node, undefined),
+				);
+				return () => {
+					unsubscribeFromValueChange();
+					unsubscribeFromChildrenChange();
+				};
+			}
+			case "subtreeChanging": {
+				const unsubscribeFromValueSubtreeChange = this.anchorNode.on(
+					"subtreeChanging",
+					(node: AnchorNode, delta: any) => listener(anchor, node, delta),
+				);
+				return () => {
+					unsubscribeFromValueSubtreeChange();
+				};
+			}
+			case "change": {
+				const unsubscribeFromVisitor = this.anchorNode.on("change", (node: AnchorNode) =>
+					listener(anchor, node, undefined),
+				);
+				return () => {
+					unsubscribeFromVisitor();
+				};
+			}
+			default:
+				throw new Error("unexpected eventName");
+		}
 	}
 }
 
