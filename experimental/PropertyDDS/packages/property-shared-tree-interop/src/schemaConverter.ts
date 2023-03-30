@@ -23,6 +23,7 @@ import {
 	SchemaDataAndPolicy,
 	defaultSchemaPolicy,
 	GlobalFieldKey,
+	TreeSchema,
 } from "@fluid-internal/tree";
 import { PropertyFactory, PropertyTemplate } from "@fluid-experimental/property-properties";
 import { TypeIdHelper } from "@fluid-experimental/property-changeset";
@@ -375,6 +376,47 @@ function enhanceRootFieldSchemaWithChildren(
 	}
 
 	return enhancedRootFieldSchema;
+}
+
+/**
+ * A helper function to add a complex type to the schema.
+ *
+ * Complex types are `array`, `map` and `set`.
+ * The resulting type added to the schema will have a name
+ * in the PropertyDDS format `context<typeName>`.
+ *
+ * Be aware, that it creates a shallow copy of the `SchemaDataAndPolicy`.
+ */
+export function addComplexTypeToSchema(
+	fullSchemaData: SchemaDataAndPolicy,
+	context: string,
+	typeName: TreeSchemaIdentifier,
+): SchemaDataAndPolicy {
+	const treeSchema: Map<TreeSchemaIdentifier, TreeSchema> = new Map();
+	for (const [k, v] of fullSchemaData.treeSchema) {
+		treeSchema.set(k, v);
+	}
+	const complexTypeName: TreeSchemaIdentifier = brand(`${context}<${typeName}>`);
+	const typeSchema =
+		context === "array"
+			? namedTreeSchema({
+					name: complexTypeName,
+					localFields: {
+						[EmptyKey]: fieldSchema(FieldKinds.sequence, [typeName]),
+					},
+					extraLocalFields: emptyField,
+			  })
+			: namedTreeSchema({
+					name: complexTypeName,
+					extraLocalFields: fieldSchema(FieldKinds.optional, [typeName]),
+			  });
+	treeSchema.set(complexTypeName, typeSchema);
+	const globalSchema: SchemaDataAndPolicy = {
+		treeSchema,
+		globalFieldSchema: fullSchemaData.globalFieldSchema,
+		policy: fullSchemaData.policy,
+	};
+	return globalSchema;
 }
 
 // Concepts currently not mapped / represented in the compiled schema:
