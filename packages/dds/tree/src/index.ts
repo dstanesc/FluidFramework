@@ -202,7 +202,6 @@ export {
 	isWritableArrayLike,
 	isContextuallyTypedNodeDataObject,
 	defaultSchemaPolicy,
-	createSchemaRepository,
 	jsonableTreeFromCursor,
 	PrimitiveValue,
 	IDefaultEditBuilder,

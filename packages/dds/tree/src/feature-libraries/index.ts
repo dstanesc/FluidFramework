@@ -72,13 +72,7 @@ export { singleTextCursor, jsonableTreeFromCursor } from "./treeTextCursor";
 import * as SequenceField from "./sequence-field";
 export { SequenceField };
 
-export {
-	defaultSchemaPolicy,
-	emptyField,
-	neverField,
-	neverTree,
-	createSchemaRepository,
-} from "./defaultSchema";
+export { defaultSchemaPolicy, emptyField, neverField, neverTree } from "./defaultSchema";
 
 export {
 	ChangesetLocalId,

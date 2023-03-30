@@ -246,9 +246,6 @@ export function createEmitter<E extends Events<E>>(noListeners?: NoListenersCall
 export const createField: unique symbol;
 
 // @alpha
-export function createSchemaRepository(schemaPolicy?: FullSchemaPolicy, data?: SchemaData): StoredSchemaRepository;
-
-// @alpha
 export interface CrossFieldManager<T = unknown> {
     get(target: CrossFieldTarget, revision: RevisionTag | undefined, id: ChangesetLocalId, addDependency: boolean): T | undefined;
     getOrCreate(target: CrossFieldTarget, revision: RevisionTag | undefined, id: ChangesetLocalId, newValue: T, invalidateDependents: boolean): T;

@@ -8,7 +8,6 @@ import { validateAssertionError } from "@fluidframework/test-runtime-utils";
 import {
 	brand,
 	FieldKinds,
-	createSchemaRepository,
 	fieldSchema,
 	lookupGlobalFieldSchema,
 	lookupTreeSchema,
@@ -25,11 +24,9 @@ describe("schema converter", () => {
 	});
 
 	it(`inherits from "NodeProperty"`, () => {
-		const schemaRepository = createSchemaRepository();
 		assert.throws(
 			() =>
 				convertPropertyToSharedTreeStorageSchema(
-					schemaRepository,
 					fieldSchema(FieldKinds.optional, [brand("Test:ErroneousType-1.0.0")]),
 				),
 			(e) =>
@@ -40,16 +37,15 @@ describe("schema converter", () => {
 			"Expected exception was not thrown",
 		);
 		const rootFieldSchema = fieldSchema(FieldKinds.optional, [brand("Test:Optional-1.0.0")]);
-		convertPropertyToSharedTreeStorageSchema(schemaRepository, rootFieldSchema);
-		expect(lookupGlobalFieldSchema(schemaRepository, rootFieldKey)).toEqual(rootFieldSchema);
+		const fullSchemaData = convertPropertyToSharedTreeStorageSchema(rootFieldSchema);
+		expect(lookupGlobalFieldSchema(fullSchemaData, rootFieldKey)).toEqual(rootFieldSchema);
 	});
 
 	it(`can use "NodeProperty" as root`, () => {
 		const rootFieldSchema = fieldSchema(FieldKinds.optional, [brand("NodeProperty")]);
-		const schemaRepository = createSchemaRepository();
-		convertPropertyToSharedTreeStorageSchema(schemaRepository, rootFieldSchema);
+		const fullSchemaData = convertPropertyToSharedTreeStorageSchema(rootFieldSchema);
 
-		expect(schemaRepository.globalFieldSchema.size).toEqual(1);
+		expect(fullSchemaData.globalFieldSchema.size).toEqual(1);
 		const expectedRootFieldSchema = fieldSchema(FieldKinds.optional, [
 			brand("NodeProperty"),
 			brand("NamedNodeProperty"),
@@ -58,13 +54,13 @@ describe("schema converter", () => {
 			brand("Test:Optional-1.0.0"),
 			brand("Test:Person-1.0.0"),
 		]);
-		expect(lookupGlobalFieldSchema(schemaRepository, rootFieldKey)).toEqual(
+		expect(lookupGlobalFieldSchema(fullSchemaData, rootFieldKey)).toEqual(
 			expectedRootFieldSchema,
 		);
 
-		// 32 types including inheritance
-		expect(schemaRepository.treeSchema.size).toEqual(32);
-		const nodePropertySchema = lookupTreeSchema(schemaRepository, brand("NodeProperty"));
+		// 62 types (primitives + "NodeProperty" including inheritances, their arrays and maps)
+		expect(fullSchemaData.treeSchema.size).toEqual(62);
+		const nodePropertySchema = lookupTreeSchema(fullSchemaData, brand("NodeProperty"));
 		expect(nodePropertySchema).toEqual({
 			name: "NodeProperty",
 			localFields: new Map(),
@@ -77,9 +73,8 @@ describe("schema converter", () => {
 
 	it("can convert property with array context", () => {
 		const rootFieldSchema = fieldSchema(FieldKinds.optional, [brand("Test:Person-1.0.0")]);
-		const schemaRepository = createSchemaRepository();
-		convertPropertyToSharedTreeStorageSchema(schemaRepository, rootFieldSchema);
-		const addressSchema = lookupTreeSchema(schemaRepository, brand("Test:Address-1.0.0"));
+		const fullSchemaData = convertPropertyToSharedTreeStorageSchema(rootFieldSchema);
+		const addressSchema = lookupTreeSchema(fullSchemaData, brand("Test:Address-1.0.0"));
 		expect(addressSchema).toMatchObject({
 			name: "Test:Address-1.0.0",
 			localFields: new Map([
