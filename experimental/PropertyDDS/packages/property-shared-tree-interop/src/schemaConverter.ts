@@ -387,7 +387,9 @@ const allowedCollectionContexts = new Set(["array", "map", "set"]);
  * The resulting type added to the schema will have a name
  * in the PropertyDDS format `context<typeName>`.
  *
- * Be aware, that it creates a shallow copy of the `SchemaDataAndPolicy`.
+ * Be aware, that using this function might be very unperformant
+ * as it reads all types registered in PropertyDDS schema
+ * and creates a shallow copy of the `SchemaDataAndPolicy`.
  */
 export function addComplexTypeToSchema(
 	fullSchemaData: SchemaDataAndPolicy,
