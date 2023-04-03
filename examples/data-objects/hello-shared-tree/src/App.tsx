@@ -45,17 +45,6 @@ import {
     getField,
     ISharedTree,
 } from "@fluid-internal/tree";
-import {
-    DeltaVisitor,
-    visitDelta,
-    isLocalKey,
-    ITreeCursorSynchronous,
-    isGlobalFieldKey,
-    ChangeFamilyEditor,
-    FieldKindSpecifier,
-} from "@fluid-internal/tree/dist/core";
-import { DefaultChangeFamily, EditableField, EditManagerIndex, ForestIndex, SchemaIndex } from "@fluid-internal/tree/dist/feature-libraries";
-import { SharedTreeCore } from "@fluid-internal/tree/dist/shared-tree-core";
 
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";

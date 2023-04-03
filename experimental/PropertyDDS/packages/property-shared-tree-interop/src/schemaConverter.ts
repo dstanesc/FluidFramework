@@ -11,8 +11,6 @@ import {
 	NamedTreeSchema,
 	neverTree,
 	rootFieldKey,
-	SchemaData,
-	StoredSchemaRepository,
 	TreeSchemaIdentifier,
 	ValueSchema,
 	lookupTreeSchema,
@@ -22,6 +20,10 @@ import {
 	EmptyKey,
 	TreeTypeSet,
 	TreeType,
+	SchemaDataAndPolicy,
+	defaultSchemaPolicy,
+	GlobalFieldKey,
+	TreeSchema,
 } from "@fluid-internal/tree";
 import { PropertyFactory, PropertyTemplate } from "@fluid-experimental/property-properties";
 import { TypeIdHelper } from "@fluid-experimental/property-changeset";
@@ -30,6 +32,7 @@ const nodePropertyType = "NodeProperty";
 const referenceGenericTypePrefix = "Reference<";
 const referenceType = "Reference";
 const basePropertyType = "BaseProperty";
+const nodePropertyTypes = new Set(["NodeProperty", "NamedNodeProperty", "RelationshipProperty"]);
 const booleanTypes = new Set(["Bool"]);
 const numberTypes = new Set([
 	"Int8",
@@ -58,6 +61,7 @@ const primitiveTypes = new Set([
 	"Float32",
 	"Float64",
 	"Enum",
+	"Reference",
 ]);
 
 function isIgnoreNestedProperties(typeid: string): boolean {
@@ -92,11 +96,17 @@ function getChildrenForType(
 }
 
 export function convertPropertyToSharedTreeStorageSchema(
-	repository: StoredSchemaRepository,
 	rootFieldSchema: FieldSchema,
-): void {
+): SchemaDataAndPolicy {
 	const inheritingChildrenByType = getAllInheritingChildrenTypes();
-	const globalTreeSchema: Map<TreeSchemaIdentifier, NamedTreeSchema> = new Map();
+	const treeSchema: Map<TreeSchemaIdentifier, NamedTreeSchema> = new Map();
+	const globalFieldSchema: Map<GlobalFieldKey, FieldSchema> = new Map();
+	const fullSchemaData: SchemaDataAndPolicy = {
+		treeSchema,
+		globalFieldSchema,
+		policy: defaultSchemaPolicy,
+	};
+
 	// Extract all referenced typeids for the schema
 	const unprocessedTypeIds: TreeSchemaIdentifier[] = [];
 	const rootBaseTypes = rootFieldSchema.types ?? fail("Expected root types");
@@ -154,25 +164,30 @@ export function convertPropertyToSharedTreeStorageSchema(
 							`${property.context}<${property.typeid}>` as TreeSchemaIdentifier,
 						);
 					}
-					if (TypeIdHelper.isPrimitiveType(property.typeid)) {
-						referencedTypeIDs.add(property.typeid);
-					}
 				}
 			}
 		};
 		extractContexts(schemaTemplate.properties);
 	}
 
-	for (const type of primitiveTypes) {
+	for (const type of [...primitiveTypes, ...nodePropertyTypes]) {
 		const typeid: TreeSchemaIdentifier = brand(type);
 		if (!referencedTypeIDs.has(typeid)) {
 			referencedTypeIDs.add(typeid);
+		}
+		const arrayType: TreeSchemaIdentifier = brand(`array<${type}>`);
+		if (!referencedTypeIDs.has(arrayType)) {
+			referencedTypeIDs.add(arrayType);
+		}
+		const mapType: TreeSchemaIdentifier = brand(`map<${type}>`);
+		if (!referencedTypeIDs.has(mapType)) {
+			referencedTypeIDs.add(mapType);
 		}
 	}
 
 	// Now we create the actual schemas, since we are now able to reference the dependent types
 	for (const referencedTypeId of referencedTypeIDs.values()) {
-		if (lookupTreeSchema(repository, referencedTypeId) !== neverTree) {
+		if (lookupTreeSchema(fullSchemaData, referencedTypeId) !== neverTree) {
 			continue;
 		}
 
@@ -225,7 +240,7 @@ export function convertPropertyToSharedTreeStorageSchema(
 				});
 				// }
 			} else {
-				if (splitTypeId.typeid === nodePropertyType) {
+				if (nodePropertyTypes.has(splitTypeId.typeid)) {
 					typeSchema = namedTreeSchema({
 						name: referencedTypeId,
 						extraLocalFields: fieldSchema(FieldKinds.optional),
@@ -238,7 +253,7 @@ export function convertPropertyToSharedTreeStorageSchema(
 					inheritanceChain.push(splitTypeId.typeid);
 
 					for (const typeIdInInheritanceChain of inheritanceChain) {
-						if (typeIdInInheritanceChain === nodePropertyType) {
+						if (nodePropertyTypes.has(typeIdInInheritanceChain)) {
 							continue;
 						}
 
@@ -335,18 +350,13 @@ export function convertPropertyToSharedTreeStorageSchema(
 					fail(`Unknown context in typeid: ${splitTypeId.context}`);
 			}
 		}
-		globalTreeSchema.set(referencedTypeId, typeSchema);
+		treeSchema.set(referencedTypeId, typeSchema);
 	}
-	const fullSchemaData: SchemaData = {
-		treeSchema: globalTreeSchema,
-		globalFieldSchema: new Map([
-			[
-				rootFieldKey,
-				enhanceRootFieldSchemaWithChildren(inheritingChildrenByType, rootFieldSchema),
-			],
-		]),
-	};
-	repository.update(fullSchemaData);
+	globalFieldSchema.set(
+		rootFieldKey,
+		enhanceRootFieldSchemaWithChildren(inheritingChildrenByType, rootFieldSchema),
+	);
+	return fullSchemaData;
 }
 
 function enhanceRootFieldSchemaWithChildren(
@@ -366,6 +376,58 @@ function enhanceRootFieldSchemaWithChildren(
 	}
 
 	return enhancedRootFieldSchema;
+}
+
+const allowedCollectionContexts = new Set(["array", "map", "set"]);
+
+/**
+ * A helper function to add a complex type to the schema.
+ *
+ * Complex types are `array`, `map` and `set`.
+ * The resulting type added to the schema will have a name
+ * in the PropertyDDS format `context<typeName>`.
+ *
+ * Be aware, that using this function might be very unperformant
+ * as it reads all types registered in PropertyDDS schema
+ * and creates a shallow copy of the `SchemaDataAndPolicy`.
+ */
+export function addComplexTypeToSchema(
+	fullSchemaData: SchemaDataAndPolicy,
+	context: string,
+	typeName: TreeSchemaIdentifier,
+): SchemaDataAndPolicy {
+	if (!allowedCollectionContexts.has(context)) {
+		fail(`Not supported collection context "${context}"`);
+	}
+	const treeSchema: Map<TreeSchemaIdentifier, TreeSchema> = new Map();
+	for (const [k, v] of fullSchemaData.treeSchema) {
+		treeSchema.set(k, v);
+	}
+	const complexTypeName: TreeSchemaIdentifier = brand(`${context}<${typeName}>`);
+	const types = new Set<TreeSchemaIdentifier>([
+		typeName,
+		...getChildrenForType(getAllInheritingChildrenTypes(), typeName),
+	]);
+	const typeSchema =
+		context === "array"
+			? namedTreeSchema({
+					name: complexTypeName,
+					localFields: {
+						[EmptyKey]: fieldSchema(FieldKinds.sequence, types),
+					},
+					extraLocalFields: emptyField,
+			  })
+			: namedTreeSchema({
+					name: complexTypeName,
+					extraLocalFields: fieldSchema(FieldKinds.optional, types),
+			  });
+	treeSchema.set(complexTypeName, typeSchema);
+	const globalSchema: SchemaDataAndPolicy = {
+		treeSchema,
+		globalFieldSchema: fullSchemaData.globalFieldSchema,
+		policy: fullSchemaData.policy,
+	};
+	return globalSchema;
 }
 
 // Concepts currently not mapped / represented in the compiled schema:

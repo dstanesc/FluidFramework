@@ -3,16 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import {
-	fieldSchema,
-	emptyMap,
-	emptySet,
-	ValueSchema,
-	TreeSchema,
-	InMemoryStoredSchemaRepository,
-	StoredSchemaRepository,
-	SchemaData,
-} from "../core";
+import { fieldSchema, emptyMap, emptySet, ValueSchema, TreeSchema } from "../core";
 import { value, forbidden, fieldKinds } from "./defaultFieldKinds";
 import { FullSchemaPolicy } from "./modular-schema";
 
@@ -52,14 +43,3 @@ export const defaultSchemaPolicy: FullSchemaPolicy = {
 	defaultTreeSchema: neverTree,
 	defaultGlobalFieldSchema: emptyField,
 };
-
-/**
- * Helper for building {@link StoredSchemaRepository}.
- * @alpha
- */
-export function createSchemaRepository(
-	schemaPolicy = defaultSchemaPolicy,
-	data?: SchemaData,
-): StoredSchemaRepository {
-	return new InMemoryStoredSchemaRepository(schemaPolicy, data);
-}

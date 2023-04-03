@@ -27,8 +27,8 @@ import { SharedTreeBranch, SharedTreeCore } from "../shared-tree-core";
 import {
 	defaultSchemaPolicy,
 	EditableTreeContext,
-	ForestIndex,
-	SchemaIndex,
+	ForestSummarizer,
+	SchemaSummarizer as SchemaSummarizer,
 	DefaultChangeFamily,
 	defaultChangeFamily,
 	DefaultEditBuilder,
@@ -36,10 +36,8 @@ import {
 	getEditableTreeContext,
 	SchemaEditor,
 	DefaultChangeset,
-	EditManagerIndex,
 	buildForest,
 	ContextuallyTypedNodeData,
-	ModularChangeset,
 	IDefaultEditBuilder,
 	ForestRepairDataStore,
 } from "../feature-libraries";
@@ -212,11 +210,7 @@ export interface ISharedTree extends ISharedObject, ISharedTreeView {}
  * TODO: detail compatibility requirements.
  */
 class SharedTree
-	extends SharedTreeCore<
-		DefaultEditBuilder,
-		DefaultChangeset,
-		readonly [SchemaIndex, ForestIndex, EditManagerIndex<ModularChangeset>]
-	>
+	extends SharedTreeCore<DefaultEditBuilder, DefaultChangeset>
 	implements ISharedTree
 {
 	public readonly context: EditableTreeContext;
@@ -238,18 +232,10 @@ class SharedTree
 		const anchors = new AnchorSet();
 		const schema = new InMemoryStoredSchemaRepository(defaultSchemaPolicy);
 		const forest = buildForest(schema, anchors);
+		const schemaSummarizer = new SchemaSummarizer(runtime, schema);
+		const forestSummarizer = new ForestSummarizer(runtime, forest);
 		super(
-			(events, editManager) => {
-				const indexes = [
-					new SchemaIndex(runtime, events, schema),
-					new ForestIndex(runtime, events, forest),
-					new EditManagerIndex(runtime, editManager),
-				] as const;
-				events.on("newLocalState", (changeDelta) =>
-					this.events.emit("afterBatch", changeDelta),
-				);
-				return indexes;
-			},
+			[schemaSummarizer, forestSummarizer],
 			defaultChangeFamily,
 			anchors,
 			id,
@@ -270,6 +256,10 @@ class SharedTree
 		};
 
 		this.context = getEditableTreeContext(forest, this.editor);
+		this.changeEvents.on("newLocalState", (changeDelta) => {
+			this.forest.applyDelta(changeDelta);
+			this.events.emit("afterBatch", changeDelta);
+		});
 	}
 
 	public locate(anchor: Anchor): AnchorNode | undefined {
@@ -286,11 +276,12 @@ class SharedTree
 
 	public fork(): ISharedTreeFork {
 		const anchors = new AnchorSet();
+		const schema = this.storedSchema.inner.clone();
 		return new SharedTreeFork(
 			this.createBranch(anchors),
 			defaultChangeFamily,
-			this.storedSchema.inner.clone(),
-			this.forest.clone(this.storedSchema, anchors),
+			schema,
+			this.forest.clone(schema, anchors),
 		);
 	}
 

@@ -8,15 +8,19 @@ import { validateAssertionError } from "@fluidframework/test-runtime-utils";
 import {
 	brand,
 	FieldKinds,
-	createSchemaRepository,
 	fieldSchema,
 	lookupGlobalFieldSchema,
 	lookupTreeSchema,
 	ValueSchema,
 	rootFieldKey,
+	TreeSchemaIdentifier,
+	EmptyKey,
 } from "@fluid-internal/tree";
 import { PropertyFactory } from "@fluid-experimental/property-properties";
-import { convertPropertyToSharedTreeStorageSchema } from "../schemaConverter";
+import {
+	addComplexTypeToSchema,
+	convertPropertyToSharedTreeStorageSchema,
+} from "../schemaConverter";
 import personSchema from "./personSchema";
 
 describe("schema converter", () => {
@@ -25,11 +29,9 @@ describe("schema converter", () => {
 	});
 
 	it(`inherits from "NodeProperty"`, () => {
-		const schemaRepository = createSchemaRepository();
 		assert.throws(
 			() =>
 				convertPropertyToSharedTreeStorageSchema(
-					schemaRepository,
 					fieldSchema(FieldKinds.optional, [brand("Test:ErroneousType-1.0.0")]),
 				),
 			(e) =>
@@ -40,16 +42,15 @@ describe("schema converter", () => {
 			"Expected exception was not thrown",
 		);
 		const rootFieldSchema = fieldSchema(FieldKinds.optional, [brand("Test:Optional-1.0.0")]);
-		convertPropertyToSharedTreeStorageSchema(schemaRepository, rootFieldSchema);
-		expect(lookupGlobalFieldSchema(schemaRepository, rootFieldKey)).toEqual(rootFieldSchema);
+		const fullSchemaData = convertPropertyToSharedTreeStorageSchema(rootFieldSchema);
+		expect(lookupGlobalFieldSchema(fullSchemaData, rootFieldKey)).toEqual(rootFieldSchema);
 	});
 
 	it(`can use "NodeProperty" as root`, () => {
 		const rootFieldSchema = fieldSchema(FieldKinds.optional, [brand("NodeProperty")]);
-		const schemaRepository = createSchemaRepository();
-		convertPropertyToSharedTreeStorageSchema(schemaRepository, rootFieldSchema);
+		const fullSchemaData = convertPropertyToSharedTreeStorageSchema(rootFieldSchema);
 
-		expect(schemaRepository.globalFieldSchema.size).toEqual(1);
+		expect(fullSchemaData.globalFieldSchema.size).toEqual(1);
 		const expectedRootFieldSchema = fieldSchema(FieldKinds.optional, [
 			brand("NodeProperty"),
 			brand("NamedNodeProperty"),
@@ -58,13 +59,13 @@ describe("schema converter", () => {
 			brand("Test:Optional-1.0.0"),
 			brand("Test:Person-1.0.0"),
 		]);
-		expect(lookupGlobalFieldSchema(schemaRepository, rootFieldKey)).toEqual(
+		expect(lookupGlobalFieldSchema(fullSchemaData, rootFieldKey)).toEqual(
 			expectedRootFieldSchema,
 		);
 
-		// 32 types including inheritance
-		expect(schemaRepository.treeSchema.size).toEqual(32);
-		const nodePropertySchema = lookupTreeSchema(schemaRepository, brand("NodeProperty"));
+		// 62 types (primitives + "NodeProperty" including inheritances, their arrays and maps)
+		expect(fullSchemaData.treeSchema.size).toEqual(62);
+		const nodePropertySchema = lookupTreeSchema(fullSchemaData, brand("NodeProperty"));
 		expect(nodePropertySchema).toEqual({
 			name: "NodeProperty",
 			localFields: new Map(),
@@ -77,9 +78,8 @@ describe("schema converter", () => {
 
 	it("can convert property with array context", () => {
 		const rootFieldSchema = fieldSchema(FieldKinds.optional, [brand("Test:Person-1.0.0")]);
-		const schemaRepository = createSchemaRepository();
-		convertPropertyToSharedTreeStorageSchema(schemaRepository, rootFieldSchema);
-		const addressSchema = lookupTreeSchema(schemaRepository, brand("Test:Address-1.0.0"));
+		const fullSchemaData = convertPropertyToSharedTreeStorageSchema(rootFieldSchema);
+		const addressSchema = lookupTreeSchema(fullSchemaData, brand("Test:Address-1.0.0"));
 		expect(addressSchema).toMatchObject({
 			name: "Test:Address-1.0.0",
 			localFields: new Map([
@@ -97,5 +97,56 @@ describe("schema converter", () => {
 			extraGlobalFields: false,
 			value: ValueSchema.Nothing,
 		});
+	});
+
+	it("can dynamically create collection types", () => {
+		const rootFieldSchema = fieldSchema(FieldKinds.optional, [brand("Test:Person-1.0.0")]);
+		const fullSchemaData = convertPropertyToSharedTreeStorageSchema(rootFieldSchema);
+
+		const geoLocationTypeName: TreeSchemaIdentifier = brand("Test:GeodesicLocation-1.0.0");
+		const schemaWithNewArray = addComplexTypeToSchema(
+			fullSchemaData,
+			"array",
+			geoLocationTypeName,
+		);
+		const arrayTypeName: TreeSchemaIdentifier = brand(`array<${geoLocationTypeName}>`);
+		const geoLocationArraySchema = lookupTreeSchema(schemaWithNewArray, arrayTypeName);
+		expect(geoLocationArraySchema).toMatchObject({
+			name: arrayTypeName,
+			localFields: new Map([
+				[
+					EmptyKey,
+					fieldSchema(FieldKinds.sequence, [
+						geoLocationTypeName,
+						brand("Test:Address-1.0.0"),
+					]),
+				],
+			]),
+			extraLocalFields: new Map(),
+			globalFields: new Set(),
+			extraGlobalFields: false,
+			value: ValueSchema.Nothing,
+		});
+
+		const schemaWithNewMap = addComplexTypeToSchema(fullSchemaData, "map", geoLocationTypeName);
+		const mapTypeName: TreeSchemaIdentifier = brand(`map<${geoLocationTypeName}>`);
+		const geoLocationMapSchema = lookupTreeSchema(schemaWithNewMap, mapTypeName);
+		expect(geoLocationMapSchema).toMatchObject({
+			name: mapTypeName,
+			localFields: new Map(),
+			extraLocalFields: fieldSchema(FieldKinds.optional, [
+				geoLocationTypeName,
+				brand("Test:Address-1.0.0"),
+			]),
+			globalFields: new Set(),
+			extraGlobalFields: false,
+			value: ValueSchema.Nothing,
+		});
+
+		assert.throws(
+			() => addComplexTypeToSchema(fullSchemaData, "tuple", geoLocationTypeName),
+			(e) => validateAssertionError(e, `Not supported collection context "tuple"`),
+			"Expected exception was not thrown",
+		);
 	});
 });

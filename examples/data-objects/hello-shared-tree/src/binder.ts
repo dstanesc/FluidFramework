@@ -57,15 +57,6 @@ import {
 	FieldKindSpecifier,
 } from "@fluid-internal/tree/dist/core";
 import { topDownPath } from "@fluid-internal/tree/dist/core/tree/pathTree";
-import {
-	DefaultChangeFamily,
-	EditableField,
-	EditManagerIndex,
-	ForestIndex,
-	SchemaIndex,
-} from "@fluid-internal/tree/dist/feature-libraries";
-import { SharedTreeCore } from "@fluid-internal/tree/dist/shared-tree-core";
-import { assert, unreachableCase } from "@fluidframework/common-utils";
 
 // ======= API Start ==========
 
