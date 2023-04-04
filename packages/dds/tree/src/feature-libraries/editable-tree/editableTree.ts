@@ -22,6 +22,8 @@ import {
 	anchorSlot,
 	AnchorNode,
 	inCursorField,
+	DeltaVisitor,
+	ITreeCursorSynchronous,
 } from "../../core";
 import { brand, fail } from "../../util";
 import { FieldKind, Multiplicity } from "../modular-schema";
@@ -53,6 +55,7 @@ import {
 } from "./editableTreeTypes";
 import { makeField, unwrappedField } from "./editableField";
 import { ProxyTarget } from "./ProxyTarget";
+import { MoveId } from "../../core/tree/delta";
 
 const editableTreeSlot = anchorSlot<EditableTree>();
 
@@ -314,38 +317,34 @@ export class NodeProxyTarget extends ProxyTarget<Anchor> {
 		eventName: K,
 		listener: EditableTreeEvents[K],
 	): () => void {
-		// assert(eventName === "changing", 0x5b3 /* unexpected eventName */);
-		const anchor: Anchor = this.getAnchor();
 		switch (eventName) {
 			case "changing": {
 				const unsubscribeFromValueChange = this.anchorNode.on(
 					"valueChanging",
-					(node: AnchorNode, value: Value) => listener(anchor, node, value),
+					(node: AnchorNode, value: Value) => {
+						listener(node);
+					},
 				);
 				const unsubscribeFromChildrenChange = this.anchorNode.on(
 					"childrenChanging",
-					(node: AnchorNode) => listener(anchor, node, undefined),
+					(node: AnchorNode) => listener(node),
 				);
 				return () => {
 					unsubscribeFromValueChange();
 					unsubscribeFromChildrenChange();
 				};
 			}
-			case "subtreeChanging": {
+			case "subtree": {
 				const unsubscribeFromValueSubtreeChange = this.anchorNode.on(
 					"subtreeChanging",
-					(node: AnchorNode, delta: any) => listener(anchor, node, delta),
+					(node: AnchorNode) => {
+						const result = listener(node);
+						assert(result !== undefined, 1);
+						return result;
+					},
 				);
 				return () => {
 					unsubscribeFromValueSubtreeChange();
-				};
-			}
-			case "change": {
-				const unsubscribeFromVisitor = this.anchorNode.on("change", (node: AnchorNode) =>
-					listener(anchor, node, undefined),
-				);
-				return () => {
-					unsubscribeFromVisitor();
 				};
 			}
 			default:

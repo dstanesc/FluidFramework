@@ -64,6 +64,7 @@ export {
 	setGenericTreeField,
 	rootFieldKeySymbol,
 	DeltaVisitor,
+	ExtVisitor,
 	SparseNode,
 	getDescendant,
 	compareUpPaths,

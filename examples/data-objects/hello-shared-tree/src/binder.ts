@@ -10,7 +10,7 @@
 /* eslint-disable import/no-internal-modules */
 /* eslint-disable import/no-unassigned-import */
 /* eslint-disable @typescript-eslint/no-floating-promises */
-
+import { assert } from "@fluidframework/common-utils";
 import {
 	brand,
 	SchemaData,
@@ -45,16 +45,19 @@ import {
 	getField,
 	ISharedTree,
 	UpPath,
+	FieldUpPath,
 	Anchor,
 } from "@fluid-internal/tree";
 import {
 	DeltaVisitor,
+	ExtVisitor,
 	visitDelta,
 	isLocalKey,
 	ITreeCursorSynchronous,
 	isGlobalFieldKey,
 	ChangeFamilyEditor,
 	FieldKindSpecifier,
+	AnchorNode,
 } from "@fluid-internal/tree/dist/core";
 import { topDownPath } from "@fluid-internal/tree/dist/core/tree/pathTree";
 
@@ -72,14 +75,14 @@ import { topDownPath } from "@fluid-internal/tree/dist/core/tree/pathTree";
  * Binding for changes, local or subtree, see {@link AnchoredPathBinder}
  */
 export interface ChangeBinder {
-	bindOnChange(fn: (path: Step[], delta: Delta.Root) => void): () => void;
+	bindOnChange(fn: (path: Step[]) => void): () => void;
 }
 
 /**
  * Binding for consistency boundaries, ie transaction completion
  */
 export interface BatchBinder {
-	bindOnBatch(fn: (changeDelta: Delta.Root) => void): () => void;
+	bindOnBatch(fn: () => void): () => void;
 }
 
 interface Step {
@@ -94,71 +97,48 @@ interface Anchored {
 
 // ======= API End ==========
 
-class AnchoredDeltaVisitor implements DeltaVisitor {
-	protected readonly indices: number[] = [];
-	protected readonly path: FieldKey[] = [];
-
+class AnchoredDeltaVisitor implements ExtVisitor {
 	constructor(
-		protected readonly changeDelta: Delta.Root,
-		protected readonly nodePath: Step[],
+		protected readonly anchoredNode: AnchorNode,
 		protected readonly notifyPaths: Step[][],
-		protected fn: (path: Step[], delta: Delta.Root) => void,
+		protected readonly changeCallback: (path: Step[]) => void,
 	) {}
 
-	onDelete(index: number, count: number): void {
-		this.indices.push(index);
-		const current = this.currentDownPath();
-		if (this.isSubPath(current, this.nodePath) && this.matchesAny(current)) {
-			console.log(`onDelete current:${JSON.stringify(this.currentDownPath())}`);
-			console.log(`onDelete node:${JSON.stringify(this.nodePath)}`);
-			console.log(`onDelete notify: ${JSON.stringify(this.notifyPaths)}`);
-			this.fn(current, this.changeDelta);
+	onDelete(path: FieldUpPath, start: number, count: number): void {
+		const current = this.stepFieldDownPath(path, start);
+		console.log(
+			`onDelete current:${JSON.stringify(current)} filter: ${this.matchesAny(current)}`,
+		);
+		if (this.matchesAny(current)) {
+			this.changeCallback(this.stepDownPath(this.anchoredNode));
 		}
-		this.indices.pop();
 	}
-	onInsert(index: number, content: readonly ITreeCursorSynchronous[]): void {
-		this.indices.push(index);
-		const current = this.currentDownPath();
-		if (this.isSubPath(current, this.nodePath) && this.matchesAny(current)) {
-			console.log(`onDelete current:${JSON.stringify(this.currentDownPath())}`);
-			console.log(`onDelete node:${JSON.stringify(this.nodePath)}`);
-			console.log(`onDelete notify: ${JSON.stringify(this.notifyPaths)}`);
-			this.fn(current, this.changeDelta);
+	onInsert(path: FieldUpPath, start: number, content: readonly ITreeCursorSynchronous[]): void {
+		const current = this.stepFieldDownPath(path, start);
+		console.log(
+			`onInsert current:${JSON.stringify(current)} filter: ${this.matchesAny(current)}`,
+		);
+		if (this.matchesAny(current)) {
+			this.changeCallback(this.stepDownPath(this.anchoredNode));
 		}
-		this.indices.pop();
 	}
-	onMoveOut(index: number, count: number, id: Delta.MoveId): void {
-		throw new Error("Method not implemented.");
-	}
-	onMoveIn(index: number, count: number, id: Delta.MoveId): void {
-		throw new Error("Method not implemented.");
-	}
-	onSetValue(value: Value): void {
-		throw new Error("Method not implemented.");
-	}
-	enterNode(index: number): void {
-		this.indices.push(index);
-	}
-	exitNode(index: number): void {
-		this.indices.pop();
-	}
-	enterField(key: FieldKey): void {
-		this.path.push(key);
-	}
-	exitField(key: FieldKey): void {
-		this.path.pop();
-	}
-	currentDownPath(): Step[] {
-		const steps: Step[] = [];
-		for (let i = 1; i < this.indices.length; i++) {
-			// skip root
-			const index = this.indices[i];
-			const field = this.path[i];
-			steps.push({ index, field });
-		}
 
-		return steps;
+	stepDownPath(upPath: UpPath): Step[] {
+		const downPath: UpPath[] = topDownPath(upPath);
+		const stepDownPath: Step[] = downPath.map((u) => {
+			return { field: u.parentField, index: u.parentIndex };
+		});
+		stepDownPath.shift(); // remove path to root node
+		return stepDownPath;
 	}
+
+	stepFieldDownPath(fieldUpPath: FieldUpPath, start: number): Step[] {
+		assert(fieldUpPath.parent !== undefined, 0);
+		const stepDownPath: Step[] = this.stepDownPath(fieldUpPath.parent);
+		stepDownPath.push({ field: fieldUpPath.field, index: start });
+		return stepDownPath;
+	}
+
 	isSubPath(path: Step[], subPath: Step[]): boolean {
 		if (subPath.length > path.length) {
 			return false;
@@ -194,35 +174,20 @@ class AnchoredDeltaVisitor implements DeltaVisitor {
  * Anchored binder, eg. impl. both {@link ChangeBinder} , {@link BatchBinder} interfaces
  */
 class AnchoredPathBinder implements ChangeBinder, BatchBinder {
-
 	constructor(public readonly sharedTree: ISharedTree, public readonly anchored: Anchored) {}
 
-	stepDownPath(upPath: UpPath): Step[] {
-		const downPath: UpPath[] = topDownPath(upPath);
-		const stepDownPath: Step[] = downPath.map((u) => {
-			return { field: u.parentField, index: u.parentIndex };
-		});
-		stepDownPath.shift(); // remove path to root node
-		return stepDownPath;
-	}
-
-	bindOnBatch(fn: (changeDelta: Delta.Root) => void): () => void {
+	bindOnBatch(fn: () => void): () => void {
 		const unregister = this.sharedTree.events.on("afterBatch", (changeDelta: Delta.Root) => {
-			fn(changeDelta);
+			fn();
 		});
 		return () => unregister();
 	}
 
-	bindOnChange(fn: (path: Step[], delta: Delta.Root) => void): () => void {
+	bindOnChange(fn: (path: Step[]) => void): () => void {
 		const unregister = this.anchored.anchor[on](
-			"subtreeChanging",
-			(anchor: Anchor, upPath: UpPath, changeDelta: Delta.Root) => {
-				const downPath: Step[] = this.stepDownPath(upPath);
-				visitDelta(
-					changeDelta,
-					new AnchoredDeltaVisitor(changeDelta, downPath, this.anchored.paths, fn),
-				);
-			},
+			"subtree",
+			(anchorNode: AnchorNode) =>
+				new AnchoredDeltaVisitor(anchorNode, this.anchored.paths, fn),
 		);
 		return () => {
 			unregister();

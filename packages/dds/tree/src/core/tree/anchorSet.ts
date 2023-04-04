@@ -7,8 +7,9 @@ import { assert } from "@fluidframework/common-utils";
 import { createEmitter, ISubscribable } from "../../events";
 import { brand, Brand, fail, Invariant, Opaque, ReferenceCountedBase } from "../../util";
 import { FieldKey, EmptyKey, Delta, visitDelta, DeltaVisitor } from "../tree";
-import { UpPath } from "./pathTree";
+import { FieldUpPath, topDownPath, UpPath } from "./pathTree";
 import { Value } from "./types";
+import { ExtVisitor } from "./visitExt";
 
 /**
  * A way to refer to a particular tree location within an {@link AnchorSet}.
@@ -116,14 +117,12 @@ export interface AnchorEvents {
 	 * Called on every parent (transitively) when a change is occurring.
 	 * Includes changes to this node itself.
 	 */
-	subtreeChanging(anchor: AnchorNode, delta: any): void;
+	subtreeChanging(anchor: AnchorNode): ExtVisitor;
 
 	/**
 	 * Value on this node is changing.
 	 */
 	valueChanging(anchor: AnchorNode, value: Value): void;
-
-	change(anchor: AnchorNode): any;
 }
 
 /**
@@ -566,11 +565,25 @@ export class AnchorSet implements ISubscribable<AnchorSetRootEvents> {
 			}
 		};
 
+		const extVisitors: Map<PathNode, ExtVisitor[]> = new Map();
+
 		const visitor: DeltaVisitor = {
 			onDelete: (start: number, count: number): void => {
 				assert(parentField !== undefined, 0x3a7 /* Must be in a field to delete */);
 				maybeWithNode(
-					(p) => p.events.emit("childrenChanging", p),
+					(p) => {
+						assert(parentField !== undefined, 0x3a7 /* Must be in a field to delete */);
+						const fieldPath: FieldUpPath = {
+							parent: p,
+							field: parentField,
+						};
+						p.events.emit("childrenChanging", p);
+						for (const [, visitors] of extVisitors) {
+							for (const v of visitors) {
+								v.onDelete(fieldPath, start, count);
+							}
+						}
+					},
 					() => this.events.emit("childrenChanging", this),
 				);
 				this.moveChildren(count, { parent, parentField, parentIndex: start }, undefined);
@@ -578,7 +591,19 @@ export class AnchorSet implements ISubscribable<AnchorSetRootEvents> {
 			onInsert: (start: number, content: Delta.ProtoNode[]): void => {
 				assert(parentField !== undefined, 0x3a8 /* Must be in a field to insert */);
 				maybeWithNode(
-					(p) => p.events.emit("childrenChanging", p),
+					(p) => {
+						assert(parentField !== undefined, 0x3a7 /* Must be in a field to delete */);
+						const fieldPath: FieldUpPath = {
+							parent: p,
+							field: parentField,
+						};
+						p.events.emit("childrenChanging", p);
+						for (const [, visitors] of extVisitors) {
+							for (const v of visitors) {
+								v.onInsert(fieldPath, start, content);
+							}
+						}
+					},
 					() => this.events.emit("childrenChanging", this),
 				);
 				this.moveChildren(content.length, undefined, {
@@ -612,10 +637,16 @@ export class AnchorSet implements ISubscribable<AnchorSetRootEvents> {
 				assert(parentField !== undefined, 0x3ab /* Must be in a field to enter node */);
 				parent = { parent, parentField, parentIndex: index };
 				parentField = undefined;
-				maybeWithNode((p) => p.events.emit("subtreeChanging", p, delta));
+				maybeWithNode((p) => {
+					const visitors: ExtVisitor[] = p.events.emitAndCollect("subtreeChanging", p);
+					extVisitors.set(p, visitors);
+				});
 			},
 			exitNode: (index: number): void => {
 				assert(parent !== undefined, 0x3ac /* Must have parent node */);
+				maybeWithNode((p) => {
+					if (extVisitors.has(p)) extVisitors.delete(p);
+				});
 				parentField = parent.parentField;
 				parent = parent.parent;
 			},
@@ -709,8 +740,6 @@ class PathNode extends ReferenceCountedBase implements UpPath<PathNode>, AnchorN
 
 	public readonly slots: BrandedMapSubset<AnchorSlot<any>> = new Map();
 
-	public readonly visitors: any = [];
-
 	/**
 	 * Construct a PathNode with refcount 1.
 	 * @param anchorSet - used to determine if this PathNode is already part of a specific anchorSet
@@ -736,15 +765,8 @@ class PathNode extends ReferenceCountedBase implements UpPath<PathNode>, AnchorN
 		super(1);
 	}
 
-	public addDeltaVisitor<K extends keyof AnchorEvents>(listener: AnchorEvents[K]): () => void {
-		this.visitors.push(listener);
-		return () => {};
-	}
-
 	public on<K extends keyof AnchorEvents>(eventName: K, listener: AnchorEvents[K]): () => void {
-		return eventName === "change"
-			? this.addDeltaVisitor(listener)
-			: this.events.on(eventName, listener);
+		return this.events.on(eventName, listener);
 	}
 
 	public child(key: FieldKey, index: number): UpPath<AnchorNode> {

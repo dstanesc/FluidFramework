@@ -116,8 +116,8 @@ export interface OperationAdapter {
     onBatch: () => void;
 }
 
-let countOnChange = 0;
-let countOnBatch = 0;
+// let countOnChange = 0;
+// let countOnBatch = 0;
 export class DomainAdapterReact implements OperationAdapter {
     protected changed: boolean = false;
     constructor(
@@ -125,11 +125,11 @@ export class DomainAdapterReact implements OperationAdapter {
         protected readonly workspace: Workspace,
     ) { }
     onChange(): void {
-        console.log('onChange received', countOnChange++);
+        // console.log('onChange received', countOnChange++);
         this.changed = true;
     }
     onBatch(): void {
-        console.log('onBatch received', countOnBatch++);
+        // console.log('onBatch received', countOnBatch++);
         if (this.changed) {
             this.transition(prevRows => readDrawValues(this.workspace));
         }
@@ -289,8 +289,8 @@ function insertDrawValues(workspace: Workspace) {
 }
 
 function registerRootBinder(workspace: Workspace, stateTransition: Transition<number[][]>) {
-    // const anchor = workspace.tree.context.root.getNode(0); // root
-    const anchor = workspace.tree.context.root.getNode(0)[getField](drawKeys).getNode(2); // specific node - 3rd row
+    const anchor = workspace.tree.context.root.getNode(0); // root
+    // const anchor = workspace.tree.context.root.getNode(0)[getField](drawKeys).getNode(2); // specific node - 3rd row
     const binder = createAnchoredBinder(workspace.tree, anchor, appSchema, ['drawKeys[2].valueKeys[4]']);
     const reactAdapter = new DomainAdapterReact(stateTransition, workspace);
     binder.bindOnChange(() => reactAdapter.onChange());

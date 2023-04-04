@@ -245,7 +245,7 @@ describe("AnchorSet", () => {
 		const node0 = anchors.locate(anchor0) ?? assert.fail();
 
 		node0.on("childrenChanging", log.logger("childrenChange"));
-		node0.on("subtreeChanging", log.logger("subtreeChange"));
+		// node0.on("subtreeChanging", log.logger("subtreeChange"));
 		node0.on("valueChanging", log.logger("valueChange"));
 		node0.on("afterDelete", log.logger("afterDelete"));
 
