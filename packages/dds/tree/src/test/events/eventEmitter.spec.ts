@@ -137,16 +137,16 @@ describe("EventEmitter", () => {
 });
 
 interface MyEvents {
-	loaded: () => void;
-	computed: () => number;
+	loaded: (input: string) => void;
+	computed: (input: number) => number;
 }
 
 // The below classes correspond to the examples given in the doc comment of `EventEmitter` to ensure that they compile
 
 class MyInheritanceClass extends EventEmitter<MyEvents> {
 	private load() {
-		this.emit("loaded");
-		const results: number[] = this.emitAndCollect("computed");
+		this.emit("loaded", "hello");
+		const results: number[] = this.emitAndCollect("computed", 2);
 	}
 }
 
@@ -154,8 +154,13 @@ class MyCompositionClass implements ISubscribable<MyEvents> {
 	private readonly events = createEmitter<MyEvents>();
 
 	private load() {
-		this.events.emit("loaded");
-		const results: number[] = this.events.emitAndCollect("computed");
+		this.events.emit("loaded", "hello");
+		const results: number[] = this.events.emitAndCollect("computed", 2);
+	}
+
+	private listen() {
+		this.on("loaded", (input) => {});
+		this.on("computed", (input) => 3);
 	}
 
 	public on<K extends keyof MyEvents>(eventName: K, listener: MyEvents[K]): () => void {

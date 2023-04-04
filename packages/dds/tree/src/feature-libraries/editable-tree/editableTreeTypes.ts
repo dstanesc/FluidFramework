@@ -10,6 +10,8 @@ import {
 	TreeSchemaIdentifier,
 	TreeSchema,
 	ITreeCursor,
+	AnchorNode,
+	ExtVisitor,
 } from "../../core";
 import {
 	PrimitiveValue,
@@ -94,7 +96,14 @@ export interface EditableTreeEvents {
 	 * This includes its values and fields.
 	 * Note that this is shallow: it does not include changes to the values of nodes it its fields for example.
 	 */
-	changing(): void;
+	changing(node: AnchorNode): void;
+
+	/**
+	 * Something in this tree is changing.
+	 * Called on every parent (transitively) when a change is occurring.
+	 * Includes changes to this node itself.
+	 */
+	subtree(node: AnchorNode): ExtVisitor;
 }
 
 /**
