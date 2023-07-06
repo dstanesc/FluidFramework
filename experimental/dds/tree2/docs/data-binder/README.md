@@ -47,7 +47,6 @@ const syntaxTree: BindSyntaxTree = {
 	address: true,
 };
 const bindTree: BindTree = compileSyntaxTree(syntaxTree);
-const customOrder = [fieldZip, fieldStreet, fieldPhones, fieldSequencePhones];
 const options: FlushableBinderOptions<ViewEvents> = createFlushableBinderOptions({
 	matchPolicy: "subtree",
 	autoFlushPolicy: "afterBatch",
@@ -91,6 +90,8 @@ dataBinder.register(root, BindingType.Batch, [bindTree], (batchContext: BatchBin
 ```
 
 > Note: Batch and incremental notification can be combined. When bind specification overlaps, batch notification is preferred. In the following example, changes to `zip` will be batched, while changes to `street` (which is a possible sibling to `zip` field in the overall logical tree) will be notified incrementally.
+
+Example:
 
 ```ts
 const syntaxTree: BindSyntaxTree = {
@@ -166,8 +167,8 @@ Current configuration options are described below:
 -   `autoFlush` specifies whether the binder should automatically flush events. The default value is `true`.
 -   `autoFlushPolicy` specifies the policy for automatically flushing events. The default value is `afterBatch`. The following policies are supported:
     -   `afterBatch` flushes events after the `ViewEvents.afterBatch` event is emitted.
--   `sortFn` specifies the sort function for sorting events associated with a given anchor. The default value is `()=>0`, which means no sorting is applied. Interesting examples are sorting events by their type, ie. `Delete` before `Insert`, or custom based on parent fields.
--   `sortAnchorsFn` specifies the sort function for sorting event groups associated with given anchors. The default value is `()=>0`, which means no sorting is applied. Interesting application is depth-first ordering, ie. triggering first events for the deepest anchors in the tree.
+-   `sortFn` specifies the sort function for sorting events associated with a given anchor. The default value is `() => 0`, which means no sorting is applied. Interesting examples are sorting events by their type, ie. `Delete` before `Insert`, or custom based on parent fields.
+-   `sortAnchorsFn` specifies the sort function for sorting event groups associated with given anchors. The default value is `() => 0`, which means no sorting is applied. Interesting application is depth-first ordering, ie. triggering first events for the deepest anchors in the tree.
 
 Example:
 
@@ -239,4 +240,64 @@ const syntaxTree: BindSyntaxTree = ...
 const bindTree: BindTree = compileSyntaxTree(syntaxTree);
 ```
 
+## Event Listener Registration
+
+Event listeners are registered using the `register` method of the `DataBinder` interface:
+
+```ts
+/**
+ * The data binder interface
+ *
+ * @alpha
+ */
+export interface DataBinder<B extends OperationBinderEvents | InvalidationBinderEvents> {
+	/**
+	 * Register an event listener
+	 *
+	 * @param anchor - The anchor to register the listener on
+	 * @param eventType - The {@link BindingType} to listen for.
+	 * @param eventTrees - The {@link BindTree}s to filter on.
+	 * @param listener - The listener to register
+	 */
+	register<K extends keyof Events<B>>(
+		anchor: EditableTree,
+		eventType: K,
+		eventTrees: BindTree[],
+		listener?: B[K],
+	): void;
+
+	/**
+	 * Unregister all listeners.
+	 */
+	unregisterAll(): void;
+}
+```
+
+The _anchor_ node can be any node in the tree. The _event type_ is one of the supported binding types. The _event trees_ are the trees describing the paths of interest. The _listener_ is the callback function that will be invoked when an event matching the anchor, event type and event trees is emitted.
+
+Example:
+
+```ts
+const dataBinder: FlushableDataBinder<OperationBinderEvents> = createDataBinderBuffering(
+	tree.events,
+	options,
+);
+dataBinder.register(root, BindingType.Insert, [bindTree], (insertContext: InsertBindingContext) => {
+	console.log("inserted");
+});
+```
+
+Different binder categories support different event types. The following table describes the supported binding types for each binder category:
+
+| Binder Category | Binding Type               | Description                                      |
+| --------------- | -------------------------- | ------------------------------------------------ |
+| `Direct`        | `BindingType.Insert`       | Emitted when a new node is inserted in the tree. |
+| `Direct`        | `BindingType.Delete`       | Emitted when a node is deleted from the tree.    |
+| `Buffering`     | `BindingType.Insert`       | Emitted when a new node is inserted in the tree. |
+| `Buffering`     | `BindingType.Delete`       | Emitted when a node is deleted from the tree.    |
+| `Batching`      | `BindingType.Batch`        | Emitted when a batch of events is emitted.       |
+| `Invalidating`  | `BindingType.Invalidation` | Emitted when a path is invalidated.              |
+
+
+> Note: the content table above is subject to change. Intentionally left out event types which are in the process of being deprecated. 
 
