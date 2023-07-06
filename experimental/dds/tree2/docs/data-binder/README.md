@@ -177,26 +177,9 @@ const options: FlushableBinderOptions<ViewEvents> = createFlushableBinderOptions
 	matchPolicy: "subtree",
 	autoFlush: true,
 	autoFlushPolicy: "afterBatch",
-	sortFn: deletesFirst,
-	sortAnchorsFn: depthFirst,
+	sortFn: () => 0,
+	sortAnchorsFn: () => 0,
 });
-
-function deletesFirst(a: VisitorBindingContext, b: VisitorBindingContext): number {
-	if (a.type === BindingType.Delete && b.type === BindingType.Delete) {
-		return 0;
-	}
-	if (a.type === BindingType.Delete) {
-		return -1;
-	}
-	if (b.type === BindingType.Delete) {
-		return 1;
-	}
-	return 0;
-}
-
-function depthFirst(a: UpPath, b: UpPath): number {
-	return getDepth(a) - getDepth(b);
-}
 ```
 
 ## Bind Syntax Tree
@@ -298,6 +281,4 @@ Different binder categories support different event types. The following table d
 | `Batching`      | `BindingType.Batch`        | Emitted when a batch of events is emitted.       |
 | `Invalidating`  | `BindingType.Invalidation` | Emitted when a path is invalidated.              |
 
-
-> Note: the content table above is subject to change. Intentionally left out event types which are in the process of being deprecated. 
-
+> Note: the content table above is subject to change. Intentionally left out event types which are in the process of being deprecated.
