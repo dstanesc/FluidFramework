@@ -22,8 +22,7 @@ More specific binder categories are described below:
 
 A direct data binder emits events immediately as changes are applied to the tree data structure. The events are emitted in the order they are applied to the tree.
 
-See also [Match Policy](#match-policy).
-See also [Binder Configuration](#binder-configuration).
+See also [Match Policy](#match-policy), [Binder Configuration](#binder-configuration).
 
 Example:
 
@@ -43,9 +42,7 @@ dataBinder.register(root, BindingType.Insert, [bindTree], (insertContext: Insert
 
 A buffering data binder is a `FlushableDataBinder` that emits events after the tree reaches a state of consistency. The events can be emitted in the order they are applied to the tree or sorted according to a custom specification. 
 
-See also [Match Policy](#match-policy).
-See also [Binder Configuration](#binder-configuration).
-See also [Event Ordering](#event-ordering).
+See also [Match Policy](#match-policy), [Binder Configuration](#binder-configuration), [Event Ordering](#event-ordering).
 
 Example:
 
@@ -71,9 +68,7 @@ dataBinder.register(root, BindingType.Insert, [bindTree], (insertContext: Insert
 
 A buffering data binder can be operated so that events are emitted in batches. The batch is emitted when the tree reaches a state of consistency, ie. when the `flush()` method if the `FlushableDataBinder` is invoked. The events in the batch can be sorted according to custom specifications.
 
-See also [Match Policy](#match-policy).
-See also [Binder Configuration](#binder-configuration).
-See also [Event Ordering](#event-ordering).
+See also [Match Policy](#match-policy), [Binder Configuration](#binder-configuration), [Event Ordering](#event-ordering).
 
 Example:
 
@@ -143,8 +138,7 @@ dataBinder.register(
 
 An invalidating data binder is a `FlushableDataBinder` that emits invalidation events, that is, the registered paths have been invalidated by changes to the tree. The invalidation events are emitted after the tree reaches a state of consistency. A typical usage is to re-read based on domain heuristics the tree fragment described by the invalidated path(s).
 
-See also [Match Policy](#match-policy).
-See also [Binder Configuration](#binder-configuration).
+See also [Match Policy](#match-policy), [Binder Configuration](#binder-configuration).
 
 Example:
 
