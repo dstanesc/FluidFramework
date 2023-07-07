@@ -40,7 +40,7 @@ dataBinder.register(root, BindingType.Insert, [bindTree], (insertContext: Insert
 
 ### Buffering
 
-A buffering data binder is a `FlushableDataBinder` that emits events after the tree reaches a state of consistency. The events can be emitted in the order they are applied to the tree or sorted according to a custom specification. 
+A buffering data binder is a `FlushableDataBinder` that emits events after the tree reaches a state of consistency. The events can be emitted in the order they are applied to the tree or sorted according to a custom specification.
 
 See also [Match Policy](#match-policy), [Binder Configuration](#binder-configuration), [Event Ordering](#event-ordering).
 
@@ -204,9 +204,9 @@ const syntaxTree: BindSyntaxTree = ...
 const bindTree: BindTree = compileSyntaxTree(syntaxTree);
 ```
 
-## Match Policies
+## Match Policy
 
-The matching policy determines how the events are matched against the binding expression. The matching policy is described by the `MatchPolicy` type.
+The match policy determines how the events are matched against the binding expression. The match policy is described by the `MatchPolicy` type.
 
 The following matching policies are supported:
 
