@@ -18,9 +18,9 @@ or by invoking the `Flushable.flush()` method directly based on specific domain 
 
 More specific binder categories are described below:
 
-### Direct Data Binder
+### Direct
 
-Is a `DataBinder` that emits events immediately as changes are applied to the tree data structure. The events are emitted in the order they are applied to the tree.
+A direct data binder emits events immediately as changes are applied to the tree data structure. The events are emitted in the order they are applied to the tree.
 
 Example:
 
@@ -36,9 +36,9 @@ dataBinder.register(root, BindingType.Insert, [bindTree], (insertContext: Insert
 });
 ```
 
-### Buffering Data Binder
+### Buffering
 
-Is a `FlushableDataBinder` that emits events after the tree reaches a state of consistency. The events can be emitted in the order they are applied to the tree or sorted according to custom specifications.
+A buffering data binder is a `FlushableDataBinder` that emits events after the tree reaches a state of consistency. The events can be emitted in the order they are applied to the tree or sorted according to a custom specification.
 
 Example:
 
@@ -60,9 +60,9 @@ dataBinder.register(root, BindingType.Insert, [bindTree], (insertContext: Insert
 });
 ```
 
-### Buffering Data Binder, Batching
+### Batching
 
-Is a `FlushableDataBinder` that emits events after the tree reaches a state of consistency. The events are emitted in batches describing the unit of consistency.
+A buffering data binder can be operated so that events are emitted in batches. The batch is emitted when the tree reaches a state of consistency, ie. when the `flush()` method if the `FlushableDataBinder` is invoked. The events in the batch can be sorted according to custom specifications.
 
 Example:
 
@@ -128,9 +128,9 @@ dataBinder.register(
 );
 ```
 
-### Invalidating Data Binder
+### Invalidating
 
-Is a `FlushableDataBinder` that emits invalidation events, that is, the described paths have been invalidated by changes to the tree. The invalidation events are emitted after the tree reaches a state of consistency. A typical usage is to re-read based on domain heuristics the tree fragment described by the invalidated path(s).
+An invalidating data binder is a `FlushableDataBinder` that emits invalidation events, that is, the registered paths have been invalidated by changes to the tree. The invalidation events are emitted after the tree reaches a state of consistency. A typical usage is to re-read based on domain heuristics the tree fragment described by the invalidated path(s).
 
 Example:
 
@@ -155,38 +155,11 @@ dataBinder.register(
 );
 ```
 
-## Binder Configuration
+## Syntax Tree
 
-Current configuration options are described below:
+A binding language provides the means to describe conveniently paths of interest in the `editable-tree`. For syntactic compactness, multiple paths can be combined in a single, tree like, binding expression. The binding language is described by the `BindSyntaxTree` type.
 
--   `matchPolicy` specifies the matching policy for the binder. The binder will only emit events for paths that match the policy. The default value is `path`. The following policies are supported:
-
-    -   `subtree` match policy means that path filtering would return events matching the exact path and its subpaths, ie. changes to children would be allowed to bubble up to parent listeners.
-    -   `path` match policy means that path filtering would return events matching the _exact_ path only. In this case _exact_ semantics include interpreting an `undefined` _index_ field in any `PathStep` of a `BindPath` as a wildcard.
-
--   `autoFlush` specifies whether the binder should automatically flush events. The default value is `true`.
--   `autoFlushPolicy` specifies the policy for automatically flushing events. The default value is `afterBatch`. The following policies are supported:
-    -   `afterBatch` flushes events after the `ViewEvents.afterBatch` event is emitted.
--   `sortFn` specifies the sort function for sorting events associated with a given anchor. The default value is `() => 0`, which means no sorting is applied. Interesting examples are sorting events by their type, ie. `Delete` before `Insert`, or custom based on parent fields.
--   `sortAnchorsFn` specifies the sort function for sorting event groups associated with given anchors. The default value is `() => 0`, which means no sorting is applied. Interesting application is depth-first ordering, ie. triggering first events for the deepest anchors in the tree.
-
-Example:
-
-```ts
-const options: FlushableBinderOptions<ViewEvents> = createFlushableBinderOptions({
-	matchPolicy: "subtree",
-	autoFlush: true,
-	autoFlushPolicy: "afterBatch",
-	sortFn: () => 0,
-	sortAnchorsFn: () => 0,
-});
-```
-
-## Bind Syntax Tree
-
-A binding language provides the means for an application to describe paths of interest in the `editable-tree`. For syntactic compactness, multiple paths can be combined in a single, tree like, binding expression. The binding language is described by the `BindSyntaxTree` type.
-
-For instance, following example describes a binding expression that matches the events (ie. changes) associated with three distinct paths:
+Following example describes a binding expression that matches the events (ie. changes) associated with three distinct paths:
 
 -   `address.zip`
 -   `address.street`
@@ -204,7 +177,7 @@ const syntaxTree: BindSyntaxTree = {
 };
 ```
 
-For precise matching, the expression can include the position of a node in the containing sequence. To avoid the collision with custom attribution, an `[indexSymbol]` is provided. For instance, the following expression matches the events associated with the first element of the `phones` sequence:
+The expression can also include the position of a node in the containing sequence. To avoid potential collision with custom attribution, an `[indexSymbol]` is provided. For instance, the following expression matches the events associated with the first element of the `phones` sequence:
 
 ```ts
 const syntaxTree: BindSyntaxTree = {
@@ -214,7 +187,7 @@ const syntaxTree: BindSyntaxTree = {
 };
 ```
 
-Syntax trees are compiled into an internal representation optimized for processing. The internal representation is described by the `BindTree` type.
+Syntax trees are compiled into an internal representation, optimized for processing. The internal representation is described by the `BindTree` type.
 
 Example:
 
@@ -223,9 +196,48 @@ const syntaxTree: BindSyntaxTree = ...
 const bindTree: BindTree = compileSyntaxTree(syntaxTree);
 ```
 
-## Event Listener Registration
+## Match Policies
 
-Event listeners are registered using the `register` method of the `DataBinder` interface:
+The matching policy determines how the events are matched against the binding expression. The matching policy is described by the `MatchPolicy` type.
+
+The following matching policies are supported:
+
+-   `path` match policy requires that path filtering would return events matching the _exact_ path only. In this case _exact_ semantics include interpreting the `undefined` _index_ field in any `PathStep` of a `BindPath` as a wildcard for matching.
+-   `subtree` match policy requires that path filtering would return events matching the exact path and its subpaths, ie. changes to children would be allowed to bubble up to parent listeners.
+
+The example below is featuring the `path` policy and will only detect changes to the `zip` field, ie. trigger notification when `address.zip = "33428";` assignment occurs.
+
+Example:
+
+```ts
+const syntaxTree: BindSyntaxTree = {
+	address: {
+		zip: true,
+	},
+};
+const options: FlushableBinderOptions<ViewEvents> = createFlushableBinderOptions({
+	matchPolicy: "path", // redundant as "path" is the default
+	// ...
+});
+```
+
+Next example is demonstrating the `subtree` policy. The binder will detect changes to the `zip`, `street` and `phones` fields (or any other nodes in the `address` subtree), ie. trigger notification when `address.zip = "33428";` assignment occurs, as well as when `address.phones[0] = "123456789";` assignment occurs.
+
+Example:
+
+```ts
+const syntaxTree: BindSyntaxTree = {
+	address: true,
+};
+const options: FlushableBinderOptions<ViewEvents> = createFlushableBinderOptions({
+	matchPolicy: "subtree", // needs to be explicitly specified
+	// ...
+});
+```
+
+## Listener Registration
+
+Event listeners are registered using the `register()` method of the `DataBinder` interface:
 
 ```ts
 /**
@@ -272,7 +284,7 @@ dataBinder.register(root, BindingType.Insert, [bindTree], (insertContext: Insert
 
 Different binder categories support different event types. The following table describes the supported binding types for each binder category:
 
-| Binder Category | Binding Type               | Description                                      |
+| Binder Category | Event Type                 | Description                                      |
 | --------------- | -------------------------- | ------------------------------------------------ |
 | `Direct`        | `BindingType.Insert`       | Emitted when a new node is inserted in the tree. |
 | `Direct`        | `BindingType.Delete`       | Emitted when a node is deleted from the tree.    |
@@ -282,3 +294,95 @@ Different binder categories support different event types. The following table d
 | `Invalidating`  | `BindingType.Invalidation` | Emitted when a path is invalidated.              |
 
 > Note: the content table above is subject to change. Intentionally left out event types which are in the process of being deprecated.
+
+When invoked, a context argument is provided to the listener. The common context interface is described by the `BindingContext` type. More specialized context interfaces carry change specific attribution: `InsertBindingContext`, `DeleteBindingContext`, `BatchBindingContext`, and `InvalidationBindingContext` types.
+
+To decommission a data binder, the `unregisterAll` method can be used:
+
+Example:
+
+```ts
+dataBinder.unregisterAll();
+```
+
+## Event Ordering
+
+For the buffering data binders, the order in which events are processed when flushing the buffer can be customized. This becomes useful in cases when the event consumption module requires to:
+
+-   avoid constraint violations when events are applied to constrained models
+-   enforce operation sequencing eg. `Delete` before `Insert` on modifications to the same tree node (`shared-tree` delta events are emitted in reverse order, ie. `Insert` before `Delete`)
+-   align to structural dependencies, eg. apply changes to children before parents
+
+The buffering data binder is grouping events by the anchor node and sorting them within the group using the `sortFn` provided in the binder options. The event groups are sorted using the `sortAnchorsFn`.
+
+Example:
+
+```ts
+/**
+ * This example reorders all delete events to be processed before all insert events
+ * and reorders all event groups to be processed in depth first order.
+ */
+const options: FlushableBinderOptions<ViewEvents> = createFlushableBinderOptions({
+	matchPolicy: "subtree",
+	autoFlush: true,
+	autoFlushPolicy: "afterBatch",
+	sortFn: deletesFirst,
+	sortAnchorsFn: depthFirst,
+});
+
+function deletesFirst(a: VisitorBindingContext, b: VisitorBindingContext): number {
+	if (a.type === BindingType.Delete && b.type === BindingType.Delete) {
+		return 0;
+	}
+	if (a.type === BindingType.Delete) {
+		return -1;
+	}
+	if (b.type === BindingType.Delete) {
+		return 1;
+	}
+	return 0;
+}
+
+function depthFirst(a: UpPath, b: UpPath): number {
+	return getDepth(a) - getDepth(b);
+}
+```
+
+Example:
+
+```ts
+const customOrder = [fieldZip, fieldStreet, fieldPhones, fieldSequencePhones];
+const options: FlushableBinderOptions<ViewEvents> = createFlushableBinderOptions({
+	matchPolicy: "subtree",
+	autoFlushPolicy: "afterBatch",
+	sortFn: (a: VisitorBindingContext, b: VisitorBindingContext) => {
+		const aIndex = customOrder.indexOf(a.path.parentField);
+		const bIndex = customOrder.indexOf(b.path.parentField);
+		return aIndex - bIndex;
+	},
+});
+```
+
+## Binder Configuration
+
+Current configuration options are:
+
+-   `matchPolicy` specifies the matching policy for the binder. The binder will only emit events for paths that match the policy. Valid values are `path` and `subtree`. The default value is `path`.
+
+-   `autoFlush` specifies whether the binder should automatically flush events. The default value is `true`.
+-   `autoFlushPolicy` specifies the policy for automatically flushing events. The following policies are supported:
+    -   `afterBatch` flushes events after the `ViewEvents.afterBatch` event is emitted.
+-   `sortFn` specifies the sort function for sorting events associated with a given anchor. The default value is `() => 0`, which indicates that no sorting is applied.
+-   `sortAnchorsFn` specifies the sort function for sorting event groups associated with given anchors. The default value is `() => 0`, which indicates that no sorting is applied.
+
+Example:
+
+```ts
+const options: FlushableBinderOptions<ViewEvents> = createFlushableBinderOptions({
+	matchPolicy: "subtree",
+	autoFlush: true,
+	autoFlushPolicy: "afterBatch",
+	sortFn: () => 0,
+	sortAnchorsFn: () => 0,
+});
+```
