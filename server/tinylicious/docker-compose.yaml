@@ -1,0 +1,12 @@
+version: "3.8"
+services:
+  tinylicious:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "7070:7070"
+    volumes:
+      - type: bind
+        source: ./data
+        target: /var/tmp

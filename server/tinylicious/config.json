@@ -41,7 +41,7 @@
 	},
 	"storage": "/var/tmp/tinylicious",
 	"db": {
-		"inMemory": true,
+		"inMemory": false,
 		"path": "/var/tmp/db"
 	},
 	"moira": {
